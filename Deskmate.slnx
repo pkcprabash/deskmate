@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Deskmate.App/Deskmate.App.csproj" />
+    <Project Path="src/Deskmate.Core/Deskmate.Core.csproj" />
+    <Project Path="src/Deskmate.Infrastructure/Deskmate.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Deskmate.Core.Tests/Deskmate.Core.Tests.csproj" />
+  </Folder>
+</Solution>
