@@ -1,8 +1,11 @@
+using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Deskmate.App.ViewModels;
 using Deskmate.App.Views;
+using Deskmate.Infrastructure.Data;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 namespace Deskmate.App;
@@ -20,12 +23,18 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow
+            var settingsService = Host!.Services.GetRequiredService<SettingsService>();
+            desktop.MainWindow = new AvatarWindow
             {
-                DataContext = new MainViewModel(),
+                DataContext = new AvatarViewModel(settingsService),
             };
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private void OnQuitClicked(object? sender, EventArgs e)
+    {
+        (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
     }
 }

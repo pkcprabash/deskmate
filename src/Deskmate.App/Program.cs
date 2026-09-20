@@ -1,5 +1,6 @@
 ﻿using Avalonia;
 using Deskmate.App.Hosting;
+using Deskmate.App.SingleInstance;
 using Deskmate.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,11 +17,18 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        using var singleInstanceGuard = SingleInstanceGuard.TryAcquire();
+        if (!singleInstanceGuard.IsPrimaryInstance)
+        {
+            Console.Error.WriteLine("Deskmate is already running.");
+            return;
+        }
+
         using IHost host = AppHost.CreateHostBuilder(args).Build();
 
-        using (var scope = host.Services.CreateScope())
+        using (var dbContext = host.Services.GetRequiredService<IDbContextFactory<DeskmateDbContext>>().CreateDbContext())
         {
-            scope.ServiceProvider.GetRequiredService<DeskmateDbContext>().Database.Migrate();
+            dbContext.Database.Migrate();
         }
 
         host.Start();

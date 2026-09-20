@@ -1,0 +1,30 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Deskmate.App.ViewModels"
+        x:Class="Deskmate.App.Views.AvatarWindow"
+        x:DataType="vm:AvatarViewModel"
+        Title="Deskmate"
+        Width="180" Height="180"
+        CanResize="False"
+        WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="Manual">
+
+    <Grid Name="RootSurface"
+          Background="Transparent"
+          PointerPressed="OnPointerPressed"
+          PointerMoved="OnPointerMoved"
+          PointerReleased="OnPointerReleased">
+        <Ellipse Width="160" Height="160" Fill="#7FD8B0" Stroke="#4A9C7A" StrokeThickness="4" />
+        <TextBlock Text="^_^"
+                   FontSize="28"
+                   FontWeight="Bold"
+                   Foreground="#2C3E3A"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center" />
+    </Grid>
+
+</Window>

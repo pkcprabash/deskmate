@@ -1,3 +1,4 @@
+using Deskmate.Infrastructure.Avatars;
 using Deskmate.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,8 +12,10 @@ public static class AppHost
         Host.CreateDefaultBuilder(args)
             .ConfigureServices(services =>
             {
-                services.AddDbContext<DeskmateDbContext>(options =>
+                services.AddDbContextFactory<DeskmateDbContext>(options =>
                     options.UseSqlite($"Data Source={DeskmateDbContext.GetDatabasePath()}"));
+                services.AddSingleton<SettingsService>();
+                services.AddSingleton<AvatarPackLoader>();
                 services.AddHostedService<StartupHostedService>();
             });
 }
