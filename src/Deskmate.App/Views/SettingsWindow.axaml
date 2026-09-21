@@ -1,0 +1,83 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Deskmate.App.Views.SettingsWindow"
+        Title="Deskmate Settings"
+        Width="420" Height="440"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen">
+
+    <DockPanel Margin="16">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+            <Button Name="CancelButton" Content="Cancel" Click="OnCancelClicked" />
+            <Button Name="SaveButton" Content="Save" Click="OnSaveClicked" />
+        </StackPanel>
+
+        <TabControl>
+            <TabItem Header="Avatar">
+                <StackPanel Spacing="10" Margin="8">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Avatar pack" />
+                        <ComboBox Name="AvatarPackComboBox" HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Avatar's name" />
+                        <TextBox Name="AvatarNameTextBox" />
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Size" />
+                        <Slider Name="AvatarScaleSlider" Minimum="0.5" Maximum="2.0" TickFrequency="0.1" />
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="About me">
+                <StackPanel Spacing="10" Margin="8">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Your name" />
+                        <TextBox Name="UserNameTextBox" />
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Current focus" />
+                        <TextBox Name="CurrentFocusTextBox" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Work start" />
+                            <TimePicker Name="WorkStartPicker" />
+                        </StackPanel>
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Work end" />
+                            <TimePicker Name="WorkEndPicker" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Tone" />
+                        <ComboBox Name="ToneComboBox" HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="Behavior">
+                <StackPanel Spacing="10" Margin="8">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Fall asleep after (minutes idle)" />
+                        <NumericUpDown Name="SleepAfterMinutes" Minimum="1" Maximum="120" Increment="1" FormatString="0" />
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Suggest a break after (minutes)" />
+                        <NumericUpDown Name="BreakAfterMinutes" Minimum="5" Maximum="180" Increment="5" FormatString="0" />
+                    </StackPanel>
+                    <CheckBox Name="StartAtLoginCheckBox" Content="Start Deskmate at login" />
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="Privacy">
+                <StackPanel Margin="8" Spacing="8">
+                    <TextBlock TextWrapping="Wrap"
+                               Text="Deskmate counts your keystrokes and notes when the most recent one happened, so it knows when you're typing or away. It never reads, stores, or transmits which keys you press. Everything — your settings and reminders — stays on this computer; nothing is sent anywhere." />
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+
+</Window>

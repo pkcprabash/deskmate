@@ -3,6 +3,7 @@ using System.Runtime.Versioning;
 using Deskmate.Infrastructure.Activity;
 using Deskmate.Infrastructure.Avatars;
 using Deskmate.Infrastructure.Data;
+using Deskmate.Infrastructure.Startup;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -26,12 +27,14 @@ public static class AppHost
                 if (OperatingSystem.IsWindows())
                 {
                     AddWindowsSessionEventsMonitor(services);
+                    services.AddSingleton<IStartupRegistration, WindowsStartupRegistration>();
                 }
                 else if (OperatingSystem.IsMacOS())
                 {
                     services.AddSingleton<MacSessionEventsMonitor>();
                     services.AddSingleton<ISessionEventsMonitor>(sp => sp.GetRequiredService<MacSessionEventsMonitor>());
                     services.AddHostedService(sp => sp.GetRequiredService<MacSessionEventsMonitor>());
+                    services.AddSingleton<IStartupRegistration, MacStartupRegistration>();
                 }
 
                 services.AddHostedService<StartupHostedService>();

@@ -18,10 +18,12 @@
           Background="Transparent"
           PointerPressed="OnPointerPressed"
           PointerMoved="OnPointerMoved"
-          PointerReleased="OnPointerReleased">
+          PointerReleased="OnPointerReleased"
+          PointerEntered="OnPointerEntered"
+          PointerExited="OnPointerExited">
         <Grid.ContextMenu>
             <ContextMenu Name="QuickMenu">
-                <MenuItem Header="Settings…" IsEnabled="False" />
+                <MenuItem Header="Settings…" Click="OnSettingsClicked" />
                 <MenuItem Header="About Deskmate" IsEnabled="False" />
                 <Separator />
                 <MenuItem Header="Quit" Click="OnQuitClicked" />
@@ -31,6 +33,17 @@
                                   HorizontalAlignment="Center"
                                   VerticalAlignment="Center"
                                   AnimationCompleted="OnAnimationCompleted" />
+        <Button Name="SettingsButton"
+                Content="⚙"
+                Opacity="0"
+                IsHitTestVisible="False"
+                Width="24" Height="24"
+                Padding="0"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="6"
+                CornerRadius="12"
+                Click="OnSettingsClicked" />
     </Grid>
 
 </Window>

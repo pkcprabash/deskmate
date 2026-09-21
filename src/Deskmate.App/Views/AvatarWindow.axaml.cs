@@ -7,6 +7,8 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Deskmate.App.ViewModels;
 using Deskmate.Core;
+using Deskmate.Infrastructure.Data;
+using Deskmate.Infrastructure.Startup;
 
 namespace Deskmate.App.Views;
 
@@ -15,6 +17,10 @@ public partial class AvatarWindow : Window
     private const int ScreenMargin = 16;
     private const double DragThreshold = 4;
     private static readonly TimeSpan BehaviorTickInterval = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan GreetingDuration = TimeSpan.FromSeconds(6);
+
+    public required SettingsService SettingsService { get; init; }
+    public required IStartupRegistration StartupRegistration { get; init; }
 
     private bool _pointerDown;
     private bool _movedBeyondThreshold;
@@ -23,6 +29,7 @@ public partial class AvatarWindow : Window
     private PixelPoint _dragStartWindowPosition;
     private DispatcherTimer? _behaviorTimer;
     private SpeechBubbleWindow? _breakBubble;
+    private SpeechBubbleWindow? _greetingBubble;
 
     public AvatarWindow()
     {
@@ -42,7 +49,9 @@ public partial class AvatarWindow : Window
         Position = ResolveStartupPosition(viewModel);
 
         viewModel.StateChanged += OnStateChanged;
+        viewModel.GreetingReady += OnGreetingReady;
         OnStateChanged(viewModel.CurrentState);
+        viewModel.NotifyPossibleGreeting();
 
         _behaviorTimer = new DispatcherTimer { Interval = BehaviorTickInterval };
         _behaviorTimer.Tick += (_, _) => viewModel.NotifyTick();
@@ -53,6 +62,7 @@ public partial class AvatarWindow : Window
     {
         _behaviorTimer?.Stop();
         _breakBubble?.Close();
+        _greetingBubble?.Close();
     }
 
     private void OnStateChanged(AvatarState state)
@@ -93,27 +103,43 @@ public partial class AvatarWindow : Window
             return;
         }
 
-        _breakBubble = new SpeechBubbleWindow();
-        _breakBubble.Configure(
+        _breakBubble = CreateBubble(
             "You've been at it for a while. Take a break?",
             "Sure",
             "Later",
             onPrimaryClicked: viewModel.NotifyBreakAccepted,
             onSecondaryClicked: viewModel.NotifyBreakSnoozed);
-        _breakBubble.Opened += (_, _) => PositionBreakBubble();
-        _breakBubble.Show();
     }
 
-    private void PositionBreakBubble()
+    private void OnGreetingReady(string message)
     {
-        if (_breakBubble is null)
-        {
-            return;
-        }
+        _greetingBubble?.Close();
+        _greetingBubble = CreateBubble(message, "", "", onPrimaryClicked: () => { }, onSecondaryClicked: () => { });
 
-        var x = Position.X + (Width - _breakBubble.Width) / 2;
-        var y = Position.Y - _breakBubble.Height - 8;
-        _breakBubble.Position = new PixelPoint((int)x, (int)y);
+        var timer = new DispatcherTimer { Interval = GreetingDuration };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            _greetingBubble?.Close();
+            _greetingBubble = null;
+        };
+        timer.Start();
+    }
+
+    private SpeechBubbleWindow CreateBubble(string message, string primaryText, string secondaryText, Action onPrimaryClicked, Action onSecondaryClicked)
+    {
+        var bubble = new SpeechBubbleWindow();
+        bubble.Configure(message, primaryText, secondaryText, onPrimaryClicked, onSecondaryClicked);
+        bubble.Opened += (_, _) => PositionBubble(bubble);
+        bubble.Show();
+        return bubble;
+    }
+
+    private void PositionBubble(SpeechBubbleWindow bubble)
+    {
+        var x = Position.X + (Width - bubble.Width) / 2;
+        var y = Position.Y - bubble.Height - 8;
+        bubble.Position = new PixelPoint((int)x, (int)y);
     }
 
     private void PlayAnimation(string name)
@@ -230,5 +256,33 @@ public partial class AvatarWindow : Window
     private void OnQuitClicked(object? sender, RoutedEventArgs e)
     {
         (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
+    }
+
+    private void OnPointerEntered(object? sender, PointerEventArgs e)
+    {
+        SettingsButton.Opacity = 1;
+        SettingsButton.IsHitTestVisible = true;
+    }
+
+    private void OnPointerExited(object? sender, PointerEventArgs e)
+    {
+        SettingsButton.Opacity = 0;
+        SettingsButton.IsHitTestVisible = false;
+    }
+
+    private async void OnSettingsClicked(object? sender, RoutedEventArgs e)
+    {
+        var settingsWindow = new SettingsWindow { SettingsService = SettingsService, StartupRegistration = StartupRegistration };
+        settingsWindow.SettingsSaved += OnSettingsSaved;
+        await settingsWindow.ShowDialog(this);
+    }
+
+    private async void OnSettingsSaved()
+    {
+        if (DataContext is AvatarViewModel viewModel)
+        {
+            await viewModel.LoadAsync();
+            OnStateChanged(viewModel.CurrentState);
+        }
     }
 }

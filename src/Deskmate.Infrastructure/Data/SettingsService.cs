@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Deskmate.Core.Models;
@@ -40,6 +41,21 @@ public class SettingsService(IDbContextFactory<DeskmateDbContext> dbContextFacto
 
         settings.PositionX = positionX;
         settings.PositionY = positionY;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>General-purpose update for the fields that don't need their own dedicated method.</summary>
+    public async Task UpdateAsync(int settingsId, Action<UserSettings> apply, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        var settings = await db.UserSettings.FindAsync([settingsId], cancellationToken);
+        if (settings is null)
+        {
+            return;
+        }
+
+        apply(settings);
         await db.SaveChangesAsync(cancellationToken);
     }
 }
