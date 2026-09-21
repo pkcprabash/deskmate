@@ -3,16 +3,25 @@ using System.Threading;
 using System.Threading.Tasks;
 using Deskmate.App.Avatars;
 using Deskmate.Core;
+using Deskmate.Infrastructure.Activity;
 using Deskmate.Infrastructure.Avatars;
 using Deskmate.Infrastructure.Data;
 
 namespace Deskmate.App.ViewModels;
 
-public class AvatarViewModel(SettingsService settingsService, AvatarPackLoader avatarPackLoader) : ViewModelBase
+public class AvatarViewModel(
+    SettingsService settingsService,
+    AvatarPackLoader avatarPackLoader,
+    IdleMonitor idleMonitor,
+    ISessionEventsMonitor sessionEventsMonitor) : ViewModelBase
 {
+    private static readonly TimeSpan TickInterval = TimeSpan.FromSeconds(1);
+
     private readonly AvatarStateMachine _stateMachine = new();
 
     private int _settingsId;
+    private DateTimeOffset _workSessionStartedAt = DateTimeOffset.UtcNow;
+    private bool _isFirstTick = true;
 
     public double? SavedPositionX { get; private set; }
     public double? SavedPositionY { get; private set; }
@@ -28,6 +37,9 @@ public class AvatarViewModel(SettingsService settingsService, AvatarPackLoader a
         SavedPositionX = settings.PositionX;
         SavedPositionY = settings.PositionY;
         Pack = LoadedAvatarPack.Load(avatarPackLoader, settings.AvatarPack);
+        _stateMachine.SleepAfter = settings.SleepAfter;
+        _stateMachine.BreakAfter = settings.BreakAfter;
+        sessionEventsMonitor.SessionResumed += (_, _) => OnSessionResumed();
     }
 
     public Task SavePositionAsync(double x, double y, CancellationToken cancellationToken = default) =>
@@ -41,9 +53,68 @@ public class AvatarViewModel(SettingsService settingsService, AvatarPackLoader a
 
     public void NotifyAnimationCompleted() => Transition(AvatarInput.AnimationCompleted);
 
+    public void NotifyBreakAccepted()
+    {
+        _workSessionStartedAt = DateTimeOffset.UtcNow;
+        Transition(AvatarInput.BreakAccepted);
+    }
+
+    public void NotifyBreakSnoozed()
+    {
+        _workSessionStartedAt = DateTimeOffset.UtcNow;
+        Transition(AvatarInput.BreakSnoozed);
+    }
+
+    /// <summary>
+    /// Called on a UI timer, roughly once a second. Keystrokes aren't routed through the
+    /// window, so a recent keypress is inferred from <see cref="IdleMonitor"/> instead of
+    /// a dedicated event.
+    /// </summary>
+    public void NotifyTick()
+    {
+        var idleFor = idleMonitor.GetIdleDuration();
+
+        if (!_isFirstTick && idleFor < TickInterval)
+        {
+            Transition(AvatarInput.KeyPressed);
+        }
+
+        _isFirstTick = false;
+
+        var previous = _stateMachine.CurrentState;
+        _stateMachine.Tick(idleFor, DateTimeOffset.UtcNow - _workSessionStartedAt);
+
+        if (_stateMachine.CurrentState == previous)
+        {
+            return;
+        }
+
+        if (_stateMachine.CurrentState == AvatarState.Sleeping)
+        {
+            _workSessionStartedAt = DateTimeOffset.UtcNow;
+        }
+
+        StateChanged?.Invoke(_stateMachine.CurrentState);
+    }
+
+    private void OnSessionResumed()
+    {
+        // A locked/asleep Mac still lets the avatar fall asleep on its own; this just
+        // wakes it immediately on unlock/resume instead of waiting for the next keypress.
+        if (_stateMachine.CurrentState == AvatarState.Sleeping)
+        {
+            Transition(AvatarInput.KeyPressed);
+        }
+    }
+
     private void Transition(AvatarInput input)
     {
+        var previous = _stateMachine.CurrentState;
         _stateMachine.Apply(input);
-        StateChanged?.Invoke(_stateMachine.CurrentState);
+
+        if (_stateMachine.CurrentState != previous)
+        {
+            StateChanged?.Invoke(_stateMachine.CurrentState);
+        }
     }
 }

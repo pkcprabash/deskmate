@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Deskmate.App.ViewModels;
 using Deskmate.Core;
 
@@ -13,17 +14,21 @@ public partial class AvatarWindow : Window
 {
     private const int ScreenMargin = 16;
     private const double DragThreshold = 4;
+    private static readonly TimeSpan BehaviorTickInterval = TimeSpan.FromSeconds(1);
 
     private bool _pointerDown;
     private bool _movedBeyondThreshold;
     private int _pressClickCount;
     private PixelPoint _dragStartPointerScreenPosition;
     private PixelPoint _dragStartWindowPosition;
+    private DispatcherTimer? _behaviorTimer;
+    private SpeechBubbleWindow? _breakBubble;
 
     public AvatarWindow()
     {
         InitializeComponent();
         Opened += OnOpened;
+        Closed += OnClosed;
     }
 
     private async void OnOpened(object? sender, EventArgs e)
@@ -38,18 +43,77 @@ public partial class AvatarWindow : Window
 
         viewModel.StateChanged += OnStateChanged;
         OnStateChanged(viewModel.CurrentState);
+
+        _behaviorTimer = new DispatcherTimer { Interval = BehaviorTickInterval };
+        _behaviorTimer.Tick += (_, _) => viewModel.NotifyTick();
+        _behaviorTimer.Start();
+    }
+
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        _behaviorTimer?.Stop();
+        _breakBubble?.Close();
     }
 
     private void OnStateChanged(AvatarState state)
     {
+        if (state != AvatarState.SuggestingBreak)
+        {
+            _breakBubble?.Close();
+            _breakBubble = null;
+        }
+
         var animationName = state switch
         {
             AvatarState.Waving => "wave",
             AvatarState.Held => "held",
+            AvatarState.Typing => "typing",
+            AvatarState.Stretching => "stretch",
+            AvatarState.SippingCoffee => "coffee",
+            AvatarState.LookingAround => "look",
+            AvatarState.Sleeping => "sleeping",
+            AvatarState.Waking => "wave",
+            AvatarState.Yawning => "yawn",
+            AvatarState.SuggestingBreak => "sign",
             _ => "idle",
         };
 
         PlayAnimation(animationName);
+
+        if (state == AvatarState.SuggestingBreak)
+        {
+            ShowBreakBubble();
+        }
+    }
+
+    private void ShowBreakBubble()
+    {
+        if (DataContext is not AvatarViewModel viewModel)
+        {
+            return;
+        }
+
+        _breakBubble = new SpeechBubbleWindow();
+        _breakBubble.Configure(
+            "You've been at it for a while. Take a break?",
+            "Sure",
+            "Later",
+            onPrimaryClicked: viewModel.NotifyBreakAccepted,
+            onSecondaryClicked: viewModel.NotifyBreakSnoozed);
+        _breakBubble.Opened += (_, _) => PositionBreakBubble();
+        _breakBubble.Show();
+    }
+
+    private void PositionBreakBubble()
+    {
+        if (_breakBubble is null)
+        {
+            return;
+        }
+
+        var x = Position.X + (Width - _breakBubble.Width) / 2;
+        var y = Position.Y - _breakBubble.Height - 8;
+        _breakBubble.Position = new PixelPoint((int)x, (int)y);
     }
 
     private void PlayAnimation(string name)

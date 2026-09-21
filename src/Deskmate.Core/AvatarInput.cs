@@ -3,12 +3,9 @@ namespace Deskmate.Core;
 public enum AvatarInput
 {
     KeyPressed,
-    Tick,
     Clicked,
     DragStarted,
     DragEnded,
-    ReminderDue,
-    AlertDismissed,
     BreakAccepted,
     BreakSnoozed,
 

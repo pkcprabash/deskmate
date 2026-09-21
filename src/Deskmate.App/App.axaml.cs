@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Deskmate.App.ViewModels;
 using Deskmate.App.Views;
+using Deskmate.Infrastructure.Activity;
 using Deskmate.Infrastructure.Avatars;
 using Deskmate.Infrastructure.Data;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,9 +27,11 @@ public partial class App : Application
         {
             var settingsService = Host!.Services.GetRequiredService<SettingsService>();
             var avatarPackLoader = Host!.Services.GetRequiredService<AvatarPackLoader>();
+            var idleMonitor = Host!.Services.GetRequiredService<IdleMonitor>();
+            var sessionEventsMonitor = Host!.Services.GetRequiredService<ISessionEventsMonitor>();
             desktop.MainWindow = new AvatarWindow
             {
-                DataContext = new AvatarViewModel(settingsService, avatarPackLoader),
+                DataContext = new AvatarViewModel(settingsService, avatarPackLoader, idleMonitor, sessionEventsMonitor),
             };
         }
 

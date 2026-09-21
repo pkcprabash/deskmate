@@ -1,3 +1,5 @@
+using System;
+using System.Runtime.Versioning;
 using Deskmate.Infrastructure.Activity;
 using Deskmate.Infrastructure.Avatars;
 using Deskmate.Infrastructure.Data;
@@ -20,6 +22,26 @@ public static class AppHost
                 services.AddSingleton<KeyboardActivityMonitor>();
                 services.AddHostedService(sp => sp.GetRequiredService<KeyboardActivityMonitor>());
                 services.AddSingleton<IdleMonitor>();
+
+                if (OperatingSystem.IsWindows())
+                {
+                    AddWindowsSessionEventsMonitor(services);
+                }
+                else if (OperatingSystem.IsMacOS())
+                {
+                    services.AddSingleton<MacSessionEventsMonitor>();
+                    services.AddSingleton<ISessionEventsMonitor>(sp => sp.GetRequiredService<MacSessionEventsMonitor>());
+                    services.AddHostedService(sp => sp.GetRequiredService<MacSessionEventsMonitor>());
+                }
+
                 services.AddHostedService<StartupHostedService>();
             });
+
+    [SupportedOSPlatform("windows")]
+    private static void AddWindowsSessionEventsMonitor(IServiceCollection services)
+    {
+        services.AddSingleton<WindowsSessionEventsMonitor>();
+        services.AddSingleton<ISessionEventsMonitor>(sp => sp.GetRequiredService<WindowsSessionEventsMonitor>());
+        services.AddHostedService(sp => sp.GetRequiredService<WindowsSessionEventsMonitor>());
+    }
 }
