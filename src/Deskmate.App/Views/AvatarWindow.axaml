@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Deskmate.App.ViewModels"
+        xmlns:controls="using:Deskmate.App.Controls"
         x:Class="Deskmate.App.Views.AvatarWindow"
         x:DataType="vm:AvatarViewModel"
         Title="Deskmate"
@@ -18,13 +19,18 @@
           PointerPressed="OnPointerPressed"
           PointerMoved="OnPointerMoved"
           PointerReleased="OnPointerReleased">
-        <Ellipse Width="160" Height="160" Fill="#7FD8B0" Stroke="#4A9C7A" StrokeThickness="4" />
-        <TextBlock Text="^_^"
-                   FontSize="28"
-                   FontWeight="Bold"
-                   Foreground="#2C3E3A"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center" />
+        <Grid.ContextMenu>
+            <ContextMenu Name="QuickMenu">
+                <MenuItem Header="Settings…" IsEnabled="False" />
+                <MenuItem Header="About Deskmate" IsEnabled="False" />
+                <Separator />
+                <MenuItem Header="Quit" Click="OnQuitClicked" />
+            </ContextMenu>
+        </Grid.ContextMenu>
+        <controls:SpriteAnimator Name="Sprite"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  AnimationCompleted="OnAnimationCompleted" />
     </Grid>
 
 </Window>

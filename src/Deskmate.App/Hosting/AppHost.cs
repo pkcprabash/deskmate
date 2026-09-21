@@ -1,3 +1,4 @@
+using Deskmate.Infrastructure.Activity;
 using Deskmate.Infrastructure.Avatars;
 using Deskmate.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,9 @@ public static class AppHost
                     options.UseSqlite($"Data Source={DeskmateDbContext.GetDatabasePath()}"));
                 services.AddSingleton<SettingsService>();
                 services.AddSingleton<AvatarPackLoader>();
+                services.AddSingleton<KeyboardActivityMonitor>();
+                services.AddHostedService(sp => sp.GetRequiredService<KeyboardActivityMonitor>());
+                services.AddSingleton<IdleMonitor>();
                 services.AddHostedService<StartupHostedService>();
             });
 }

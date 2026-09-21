@@ -2,6 +2,8 @@
   "name": "Mint",
   "frameSize": { "width": 180, "height": 180 },
   "animations": {
-    "idle": { "sheet": "idle.png", "frames": 4, "fps": 4, "loop": true }
+    "idle": { "sheet": "idle.png", "frames": 4, "fps": 4, "loop": true },
+    "wave": { "sheet": "wave.png", "frames": 4, "fps": 8, "loop": false },
+    "held": { "sheet": "held.png", "frames": 4, "fps": 6, "loop": true }
   }
 }
