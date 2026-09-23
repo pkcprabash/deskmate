@@ -7,6 +7,8 @@ using Deskmate.App.Views;
 using Deskmate.Infrastructure.Activity;
 using Deskmate.Infrastructure.Avatars;
 using Deskmate.Infrastructure.Data;
+using Deskmate.Infrastructure.Notifications;
+using Deskmate.Infrastructure.Reminders;
 using Deskmate.Infrastructure.Startup;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -65,12 +67,18 @@ public partial class App : Application
         var avatarPackLoader = Host!.Services.GetRequiredService<AvatarPackLoader>();
         var idleMonitor = Host!.Services.GetRequiredService<IdleMonitor>();
         var sessionEventsMonitor = Host!.Services.GetRequiredService<ISessionEventsMonitor>();
+        var reminderScheduler = Host!.Services.GetRequiredService<ReminderScheduler>();
+        var reminderService = Host!.Services.GetRequiredService<ReminderService>();
+        var notificationService = Host!.Services.GetRequiredService<NotificationService>();
 
         return new AvatarWindow
         {
             SettingsService = settingsService,
             StartupRegistration = startupRegistration,
-            DataContext = new AvatarViewModel(settingsService, avatarPackLoader, idleMonitor, sessionEventsMonitor),
+            ReminderService = reminderService,
+            DataContext = new AvatarViewModel(
+                settingsService, avatarPackLoader, idleMonitor, sessionEventsMonitor,
+                reminderScheduler, reminderService, notificationService),
         };
     }
 

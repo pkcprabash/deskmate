@@ -21,6 +21,7 @@ public partial class AvatarWindow : Window
 
     public required SettingsService SettingsService { get; init; }
     public required IStartupRegistration StartupRegistration { get; init; }
+    public required ReminderService ReminderService { get; init; }
 
     private bool _pointerDown;
     private bool _movedBeyondThreshold;
@@ -30,6 +31,7 @@ public partial class AvatarWindow : Window
     private DispatcherTimer? _behaviorTimer;
     private SpeechBubbleWindow? _breakBubble;
     private SpeechBubbleWindow? _greetingBubble;
+    private SpeechBubbleWindow? _reminderBubble;
 
     public AvatarWindow()
     {
@@ -50,8 +52,10 @@ public partial class AvatarWindow : Window
 
         viewModel.StateChanged += OnStateChanged;
         viewModel.GreetingReady += OnGreetingReady;
+        viewModel.ReminderAlertReady += OnReminderAlertReady;
         OnStateChanged(viewModel.CurrentState);
         viewModel.NotifyPossibleGreeting();
+        viewModel.NotifyReadyForReminders();
 
         _behaviorTimer = new DispatcherTimer { Interval = BehaviorTickInterval };
         _behaviorTimer.Tick += (_, _) => viewModel.NotifyTick();
@@ -63,6 +67,7 @@ public partial class AvatarWindow : Window
         _behaviorTimer?.Stop();
         _breakBubble?.Close();
         _greetingBubble?.Close();
+        _reminderBubble?.Close();
     }
 
     private void OnStateChanged(AvatarState state)
@@ -71,6 +76,12 @@ public partial class AvatarWindow : Window
         {
             _breakBubble?.Close();
             _breakBubble = null;
+        }
+
+        if (state != AvatarState.Alerting)
+        {
+            _reminderBubble?.Close();
+            _reminderBubble = null;
         }
 
         var animationName = state switch
@@ -85,6 +96,7 @@ public partial class AvatarWindow : Window
             AvatarState.Waking => "wave",
             AvatarState.Yawning => "yawn",
             AvatarState.SuggestingBreak => "sign",
+            AvatarState.Alerting => "sign",
             _ => "idle",
         };
 
@@ -109,6 +121,22 @@ public partial class AvatarWindow : Window
             "Later",
             onPrimaryClicked: viewModel.NotifyBreakAccepted,
             onSecondaryClicked: viewModel.NotifyBreakSnoozed);
+    }
+
+    private void OnReminderAlertReady(string message)
+    {
+        if (DataContext is not AvatarViewModel viewModel)
+        {
+            return;
+        }
+
+        _reminderBubble?.Close();
+        _reminderBubble = CreateBubble(
+            message,
+            "Done",
+            "Snooze",
+            onPrimaryClicked: viewModel.NotifyReminderDone,
+            onSecondaryClicked: viewModel.NotifyReminderSnoozed);
     }
 
     private void OnGreetingReady(string message)
@@ -137,8 +165,13 @@ public partial class AvatarWindow : Window
 
     private void PositionBubble(SpeechBubbleWindow bubble)
     {
-        var x = Position.X + (Width - bubble.Width) / 2;
-        var y = Position.Y - bubble.Height - 8;
+        // Position is in device pixels, but sizes are DIPs, so scale before mixing them.
+        // bubble.Width/Height stay NaN for a SizeToContent window (they're the explicit
+        // size constraint, unset here) — ClientSize is the actual resolved size.
+        var scaling = RenderScaling;
+        var bubbleSize = bubble.ClientSize;
+        var x = Position.X + (Width * scaling - bubbleSize.Width * scaling) / 2;
+        var y = Position.Y - bubbleSize.Height * scaling - 8 * scaling;
         bubble.Position = new PixelPoint((int)x, (int)y);
     }
 
@@ -272,7 +305,12 @@ public partial class AvatarWindow : Window
 
     private async void OnSettingsClicked(object? sender, RoutedEventArgs e)
     {
-        var settingsWindow = new SettingsWindow { SettingsService = SettingsService, StartupRegistration = StartupRegistration };
+        var settingsWindow = new SettingsWindow
+        {
+            SettingsService = SettingsService,
+            StartupRegistration = StartupRegistration,
+            ReminderService = ReminderService,
+        };
         settingsWindow.SettingsSaved += OnSettingsSaved;
         await settingsWindow.ShowDialog(this);
     }

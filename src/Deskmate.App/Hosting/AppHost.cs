@@ -3,6 +3,8 @@ using System.Runtime.Versioning;
 using Deskmate.Infrastructure.Activity;
 using Deskmate.Infrastructure.Avatars;
 using Deskmate.Infrastructure.Data;
+using Deskmate.Infrastructure.Notifications;
+using Deskmate.Infrastructure.Reminders;
 using Deskmate.Infrastructure.Startup;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,10 +21,14 @@ public static class AppHost
                 services.AddDbContextFactory<DeskmateDbContext>(options =>
                     options.UseSqlite($"Data Source={DeskmateDbContext.GetDatabasePath()}"));
                 services.AddSingleton<SettingsService>();
+                services.AddSingleton<ReminderService>();
                 services.AddSingleton<AvatarPackLoader>();
                 services.AddSingleton<KeyboardActivityMonitor>();
                 services.AddHostedService(sp => sp.GetRequiredService<KeyboardActivityMonitor>());
                 services.AddSingleton<IdleMonitor>();
+                services.AddSingleton<NotificationService>();
+                services.AddSingleton<ReminderScheduler>();
+                services.AddHostedService(sp => sp.GetRequiredService<ReminderScheduler>());
 
                 if (OperatingSystem.IsWindows())
                 {

@@ -1,0 +1,54 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Deskmate.App.Views.ReminderEditWindow"
+        Title="Reminder"
+        Width="360" Height="520"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen">
+
+    <DockPanel Margin="16">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+            <Button Content="Cancel" Click="OnCancelClicked" />
+            <Button Content="Save" Click="OnSaveClicked" />
+        </StackPanel>
+
+        <ScrollViewer>
+            <StackPanel Spacing="10">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Title" />
+                    <TextBox Name="TitleTextBox" />
+                </StackPanel>
+
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Notes" />
+                    <TextBox Name="NotesTextBox" AcceptsReturn="True" Height="60" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Date" />
+                    <DatePicker Name="ReminderDatePicker" />
+                </StackPanel>
+
+                <CheckBox Name="HasTimeCheckBox" Content="At a specific time" />
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Time" />
+                    <TimePicker Name="ReminderTimePicker" />
+                </StackPanel>
+
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Repeats" />
+                    <ComboBox Name="RecurrenceComboBox" HorizontalAlignment="Stretch" />
+                </StackPanel>
+
+                <CheckBox Name="AlertDayBeforeCheckBox" Content="Alert the day before" IsChecked="True" />
+                <CheckBox Name="AlertOnDayCheckBox" Content="Alert on the day" IsChecked="True" />
+                <CheckBox Name="AlertBeforeCheckBox" Content="Also alert a bit before the time" />
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Minutes before" />
+                    <NumericUpDown Name="AlertBeforeMinutes" Minimum="5" Maximum="1440" Increment="5" FormatString="0" />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+
+</Window>

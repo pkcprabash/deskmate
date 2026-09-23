@@ -122,4 +122,38 @@ public class AvatarStateMachineTests
 
         Assert.Equal(AvatarState.Idle, sut.CurrentState);
     }
+
+    [Fact]
+    public void ReminderDue_FromIdle_TransitionsToAlerting_AndDismissReturnsToIdle()
+    {
+        var sut = new AvatarStateMachine();
+
+        sut.Apply(AvatarInput.ReminderDue);
+        Assert.Equal(AvatarState.Alerting, sut.CurrentState);
+
+        sut.Apply(AvatarInput.AlertDismissed);
+        Assert.Equal(AvatarState.Idle, sut.CurrentState);
+    }
+
+    [Fact]
+    public void ReminderDue_WhileHeld_DoesNotInterruptTheDrag()
+    {
+        var sut = new AvatarStateMachine();
+        sut.Apply(AvatarInput.DragStarted);
+
+        sut.Apply(AvatarInput.ReminderDue);
+
+        Assert.Equal(AvatarState.Held, sut.CurrentState);
+    }
+
+    [Fact]
+    public void ReminderDue_WhileAlreadyAlerting_DoesNotRestartTheAlert()
+    {
+        var sut = new AvatarStateMachine();
+        sut.Apply(AvatarInput.ReminderDue);
+
+        sut.Apply(AvatarInput.ReminderDue);
+
+        Assert.Equal(AvatarState.Alerting, sut.CurrentState);
+    }
 }

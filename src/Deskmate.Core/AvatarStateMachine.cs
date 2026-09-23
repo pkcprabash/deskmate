@@ -55,6 +55,8 @@ public class AvatarStateMachine(Func<int>? randomGesturePicker = null)
             AvatarInput.KeyPressed when IsRestable(CurrentState) => AvatarState.Typing,
             AvatarInput.BreakAccepted when CurrentState == AvatarState.SuggestingBreak => AvatarState.Idle,
             AvatarInput.BreakSnoozed when CurrentState == AvatarState.SuggestingBreak => AvatarState.Idle,
+            AvatarInput.ReminderDue when CurrentState is not (AvatarState.Held or AvatarState.Alerting or AvatarState.SuggestingBreak) => AvatarState.Alerting,
+            AvatarInput.AlertDismissed when CurrentState == AvatarState.Alerting => AvatarState.Idle,
             _ => CurrentState,
         };
 

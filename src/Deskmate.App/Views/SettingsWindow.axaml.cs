@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Deskmate.Core.Models;
@@ -13,9 +15,11 @@ namespace Deskmate.App.Views;
 public partial class SettingsWindow : Window
 {
     private int _settingsId;
+    private List<Reminder> _reminders = [];
 
     public required SettingsService SettingsService { get; init; }
     public required IStartupRegistration StartupRegistration { get; init; }
+    public required ReminderService ReminderService { get; init; }
 
     /// <summary>Raised after a successful save, so the avatar window can reload the settings it caches.</summary>
     public event Action? SettingsSaved;
@@ -52,6 +56,64 @@ public partial class SettingsWindow : Window
         SleepAfterMinutes.Value = (decimal)settings.SleepAfter.TotalMinutes;
         BreakAfterMinutes.Value = (decimal)settings.BreakAfter.TotalMinutes;
         StartAtLoginCheckBox.IsChecked = settings.StartAtLogin;
+
+        await ReloadRemindersAsync();
+    }
+
+    private async Task ReloadRemindersAsync()
+    {
+        _reminders = await ReminderService.GetAllAsync();
+        RemindersListBox.Items.Clear();
+
+        foreach (var reminder in _reminders)
+        {
+            var recurrenceSuffix = reminder.Recurrence == RecurrenceType.None ? "" : $" ({reminder.Recurrence})";
+            var timeSuffix = reminder.Time is { } time ? $" at {time:h:mm tt}" : "";
+            RemindersListBox.Items.Add($"{reminder.Date:MMM d, yyyy}{timeSuffix} — {reminder.Title}{recurrenceSuffix}");
+        }
+    }
+
+    private async void OnAddReminderClicked(object? sender, RoutedEventArgs e)
+    {
+        var editWindow = new ReminderEditWindow { ReminderService = ReminderService };
+        editWindow.Saved += async () => await ReloadRemindersAsync();
+        await editWindow.ShowDialog(this);
+    }
+
+    private async void OnEditReminderClicked(object? sender, RoutedEventArgs e)
+    {
+        var index = RemindersListBox.SelectedIndex;
+        if (index < 0 || index >= _reminders.Count)
+        {
+            return;
+        }
+
+        var editWindow = new ReminderEditWindow { ReminderService = ReminderService, ExistingReminder = _reminders[index] };
+        editWindow.Saved += async () => await ReloadRemindersAsync();
+        await editWindow.ShowDialog(this);
+    }
+
+    private async void OnDeleteReminderClicked(object? sender, RoutedEventArgs e)
+    {
+        var index = RemindersListBox.SelectedIndex;
+        if (index < 0 || index >= _reminders.Count)
+        {
+            return;
+        }
+
+        await ReminderService.DeleteAsync(_reminders[index].Id);
+        await ReloadRemindersAsync();
+    }
+
+    private async void OnMarkReminderDoneClicked(object? sender, RoutedEventArgs e)
+    {
+        var index = RemindersListBox.SelectedIndex;
+        if (index < 0 || index >= _reminders.Count)
+        {
+            return;
+        }
+
+        await ReminderService.MarkNextOccurrenceCompletedAsync(_reminders[index].Id);
     }
 
     private static string[] ListAvailableAvatarPacks()

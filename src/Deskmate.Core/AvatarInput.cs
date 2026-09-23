@@ -8,6 +8,8 @@ public enum AvatarInput
     DragEnded,
     BreakAccepted,
     BreakSnoozed,
+    ReminderDue,
+    AlertDismissed,
 
     /// <summary>Raised by the sprite animator when a one-shot animation finishes playing.</summary>
     AnimationCompleted,
