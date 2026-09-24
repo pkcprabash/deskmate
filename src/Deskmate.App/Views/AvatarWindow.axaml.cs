@@ -8,6 +8,7 @@ using Avalonia.Threading;
 using Deskmate.App.ViewModels;
 using Deskmate.Core;
 using Deskmate.Infrastructure.Data;
+using Deskmate.Infrastructure.Display;
 using Deskmate.Infrastructure.Startup;
 
 namespace Deskmate.App.Views;
@@ -16,19 +17,25 @@ public partial class AvatarWindow : Window
 {
     private const int ScreenMargin = 16;
     private const double DragThreshold = 4;
+    private const double BaseSize = 180;
     private static readonly TimeSpan BehaviorTickInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan GreetingDuration = TimeSpan.FromSeconds(6);
+    private static readonly TimeSpan FullScreenCheckInterval = TimeSpan.FromSeconds(3);
 
     public required SettingsService SettingsService { get; init; }
     public required IStartupRegistration StartupRegistration { get; init; }
     public required ReminderService ReminderService { get; init; }
+    public required IFullScreenDetector FullScreenDetector { get; init; }
 
     private bool _pointerDown;
     private bool _movedBeyondThreshold;
     private int _pressClickCount;
     private PixelPoint _dragStartPointerScreenPosition;
     private PixelPoint _dragStartWindowPosition;
+    private bool _isPausedHidden;
+    private bool _isFullScreenHidden;
     private DispatcherTimer? _behaviorTimer;
+    private DispatcherTimer? _fullScreenCheckTimer;
     private SpeechBubbleWindow? _breakBubble;
     private SpeechBubbleWindow? _greetingBubble;
     private SpeechBubbleWindow? _reminderBubble;
@@ -48,11 +55,14 @@ public partial class AvatarWindow : Window
         }
 
         await viewModel.LoadAsync();
+        Width = BaseSize * viewModel.AvatarScale;
+        Height = BaseSize * viewModel.AvatarScale;
         Position = ResolveStartupPosition(viewModel);
 
         viewModel.StateChanged += OnStateChanged;
         viewModel.GreetingReady += OnGreetingReady;
         viewModel.ReminderAlertReady += OnReminderAlertReady;
+        viewModel.PausedChanged += OnPausedChanged;
         OnStateChanged(viewModel.CurrentState);
         viewModel.NotifyPossibleGreeting();
         viewModel.NotifyReadyForReminders();
@@ -60,14 +70,53 @@ public partial class AvatarWindow : Window
         _behaviorTimer = new DispatcherTimer { Interval = BehaviorTickInterval };
         _behaviorTimer.Tick += (_, _) => viewModel.NotifyTick();
         _behaviorTimer.Start();
+
+        _fullScreenCheckTimer = new DispatcherTimer { Interval = FullScreenCheckInterval };
+        _fullScreenCheckTimer.Tick += (_, _) => CheckFullScreen();
+        _fullScreenCheckTimer.Start();
     }
 
     private void OnClosed(object? sender, EventArgs e)
     {
         _behaviorTimer?.Stop();
+        _fullScreenCheckTimer?.Stop();
         _breakBubble?.Close();
         _greetingBubble?.Close();
         _reminderBubble?.Close();
+    }
+
+    private void CheckFullScreen()
+    {
+        bool isFullScreen;
+        try
+        {
+            isFullScreen = FullScreenDetector.IsFullScreenAppActive();
+        }
+        catch
+        {
+            // Best-effort: if platform detection misbehaves, just don't hide for it.
+            isFullScreen = false;
+        }
+
+        if (isFullScreen == _isFullScreenHidden)
+        {
+            return;
+        }
+
+        _isFullScreenHidden = isFullScreen;
+        UpdateVisibility();
+    }
+
+    private void UpdateVisibility()
+    {
+        if (_isPausedHidden || _isFullScreenHidden)
+        {
+            Hide();
+        }
+        else
+        {
+            Show();
+        }
     }
 
     private void OnStateChanged(AvatarState state)
@@ -116,7 +165,7 @@ public partial class AvatarWindow : Window
         }
 
         _breakBubble = CreateBubble(
-            "You've been at it for a while. Take a break?",
+            viewModel.BreakSuggestionMessage,
             "Sure",
             "Later",
             onPrimaryClicked: viewModel.NotifyBreakAccepted,
@@ -137,6 +186,22 @@ public partial class AvatarWindow : Window
             "Snooze",
             onPrimaryClicked: viewModel.NotifyReminderDone,
             onSecondaryClicked: viewModel.NotifyReminderSnoozed);
+    }
+
+    private void OnPausedChanged(bool isPaused)
+    {
+        if (isPaused)
+        {
+            _breakBubble?.Close();
+            _breakBubble = null;
+            _reminderBubble?.Close();
+            _reminderBubble = null;
+            _greetingBubble?.Close();
+            _greetingBubble = null;
+        }
+
+        _isPausedHidden = isPaused;
+        UpdateVisibility();
     }
 
     private void OnGreetingReady(string message)
@@ -177,13 +242,20 @@ public partial class AvatarWindow : Window
 
     private void PlayAnimation(string name)
     {
-        var pack = (DataContext as AvatarViewModel)?.Pack;
-        if (pack is null || !pack.TryGetAnimation(name, out var animation, out var sheet))
+        if (DataContext is not AvatarViewModel viewModel || viewModel.Pack is not { } pack)
         {
             return;
         }
 
-        Sprite.Play(sheet, animation, pack.FrameSize.Width, pack.FrameSize.Height);
+        if (!pack.TryGetAnimation(name, out var animation, out var sheet))
+        {
+            return;
+        }
+
+        Sprite.Play(
+            sheet, animation, pack.FrameSize.Width, pack.FrameSize.Height,
+            renderWidth: pack.FrameSize.Width * viewModel.AvatarScale,
+            renderHeight: pack.FrameSize.Height * viewModel.AvatarScale);
     }
 
     private void OnAnimationCompleted(object? sender, EventArgs e)
@@ -193,13 +265,14 @@ public partial class AvatarWindow : Window
 
     private PixelPoint ResolveStartupPosition(AvatarViewModel viewModel)
     {
-        var screenBounds = GetPrimaryScreenBounds();
-
         if (viewModel.SavedPositionX is double x && viewModel.SavedPositionY is double y)
         {
-            return ClampToScreen(new PixelPoint((int)x, (int)y), screenBounds);
+            // The saved position may be on any monitor, not necessarily the primary one.
+            var saved = new PixelPoint((int)x, (int)y);
+            return ClampToScreen(saved, GetScreenBoundsForPosition(saved));
         }
 
+        var screenBounds = GetPrimaryScreenBounds();
         var defaultX = screenBounds.Right - (int)Width - ScreenMargin;
         var defaultY = screenBounds.Bottom - (int)Height - ScreenMargin;
         return ClampToScreen(new PixelPoint(defaultX, defaultY), screenBounds);
@@ -207,6 +280,10 @@ public partial class AvatarWindow : Window
 
     private PixelRect GetPrimaryScreenBounds() =>
         Screens.Primary?.WorkingArea ?? new PixelRect(0, 0, 1280, 800);
+
+    /// <summary>The working area of whichever monitor currently contains <paramref name="position"/>.</summary>
+    private PixelRect GetScreenBoundsForPosition(PixelPoint position) =>
+        (Screens.ScreenFromPoint(position) ?? Screens.Primary)?.WorkingArea ?? GetPrimaryScreenBounds();
 
     private PixelPoint ClampToScreen(PixelPoint position, PixelRect screenBounds)
     {
@@ -269,7 +346,7 @@ public partial class AvatarWindow : Window
 
         if (_movedBeyondThreshold)
         {
-            Position = ClampToScreen(Position, GetPrimaryScreenBounds());
+            Position = ClampToScreen(Position, GetScreenBoundsForPosition(Position));
             if (viewModel is not null)
             {
                 await viewModel.SavePositionAsync(Position.X, Position.Y);
@@ -290,6 +367,15 @@ public partial class AvatarWindow : Window
     {
         (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
     }
+
+    /// <summary>Entry points for the tray icon's menu, which lives at the Application level.</summary>
+    public void ShowSettings() => OnSettingsClicked(this, new RoutedEventArgs());
+
+    public void PauseForOneHour() => (DataContext as AvatarViewModel)?.NotifyPauseFor(TimeSpan.FromHours(1));
+
+    public void PauseUntilTomorrow() => (DataContext as AvatarViewModel)?.NotifyPauseUntilTomorrow();
+
+    public void Resume() => (DataContext as AvatarViewModel)?.NotifyResume();
 
     private void OnPointerEntered(object? sender, PointerEventArgs e)
     {

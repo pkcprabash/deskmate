@@ -24,7 +24,13 @@ public class SpriteAnimator : Control
     private int _currentFrame;
     private DispatcherTimer? _timer;
 
-    public void Play(Bitmap sheet, AvatarAnimation animation, int frameWidth, int frameHeight)
+    /// <summary>
+    /// frameWidth/frameHeight describe the source sprite sheet's frame size (for cropping);
+    /// renderWidth/renderHeight are the on-screen size, defaulting to the frame size when
+    /// omitted. Kept separate so AvatarScale can resize the visual without touching how
+    /// frames are cropped from the sheet.
+    /// </summary>
+    public void Play(Bitmap sheet, AvatarAnimation animation, int frameWidth, int frameHeight, double? renderWidth = null, double? renderHeight = null)
     {
         Stop();
 
@@ -35,8 +41,8 @@ public class SpriteAnimator : Control
         _loop = animation.Loop;
         _currentFrame = 0;
 
-        Width = frameWidth;
-        Height = frameHeight;
+        Width = renderWidth ?? frameWidth;
+        Height = renderHeight ?? frameHeight;
 
         _timer = new DispatcherTimer
         {

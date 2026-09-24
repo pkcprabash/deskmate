@@ -3,6 +3,7 @@ using System.Runtime.Versioning;
 using Deskmate.Infrastructure.Activity;
 using Deskmate.Infrastructure.Avatars;
 using Deskmate.Infrastructure.Data;
+using Deskmate.Infrastructure.Display;
 using Deskmate.Infrastructure.Notifications;
 using Deskmate.Infrastructure.Reminders;
 using Deskmate.Infrastructure.Startup;
@@ -34,6 +35,7 @@ public static class AppHost
                 {
                     AddWindowsSessionEventsMonitor(services);
                     services.AddSingleton<IStartupRegistration, WindowsStartupRegistration>();
+                    services.AddSingleton<IFullScreenDetector, WindowsFullScreenDetector>();
                 }
                 else if (OperatingSystem.IsMacOS())
                 {
@@ -41,6 +43,7 @@ public static class AppHost
                     services.AddSingleton<ISessionEventsMonitor>(sp => sp.GetRequiredService<MacSessionEventsMonitor>());
                     services.AddHostedService(sp => sp.GetRequiredService<MacSessionEventsMonitor>());
                     services.AddSingleton<IStartupRegistration, MacStartupRegistration>();
+                    services.AddSingleton<IFullScreenDetector, MacFullScreenDetector>();
                 }
 
                 services.AddHostedService<StartupHostedService>();

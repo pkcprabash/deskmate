@@ -18,6 +18,12 @@
             <TrayIcon Icon="/Assets/avalonia-logo.ico" ToolTipText="Deskmate">
                 <TrayIcon.Menu>
                     <NativeMenu>
+                        <NativeMenuItem Header="Settings…" Click="OnTraySettingsClicked" />
+                        <NativeMenuItemSeparator />
+                        <NativeMenuItem Header="Pause for 1 hour" Click="OnTrayPauseHourClicked" />
+                        <NativeMenuItem Header="Pause until tomorrow" Click="OnTrayPauseTomorrowClicked" />
+                        <NativeMenuItem Header="Resume" Click="OnTrayResumeClicked" />
+                        <NativeMenuItemSeparator />
                         <NativeMenuItem Header="Quit" Click="OnQuitClicked" />
                     </NativeMenu>
                 </TrayIcon.Menu>

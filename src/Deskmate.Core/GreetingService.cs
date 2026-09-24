@@ -1,4 +1,5 @@
 using System;
+using Deskmate.Core.Models;
 
 namespace Deskmate.Core;
 
@@ -36,21 +37,44 @@ public class GreetingService
         return GreetingKind.WelcomeBack;
     }
 
-    public string BuildMessage(GreetingKind kind, string userName, DateTimeOffset now)
+    public string BuildMessage(GreetingKind kind, string userName, DateTimeOffset now, MessageTone tone)
     {
+        var name = string.IsNullOrWhiteSpace(userName) ? "there" : userName;
+
         if (kind != GreetingKind.Full)
         {
-            return "Welcome back!";
+            return tone switch
+            {
+                MessageTone.Calm => "Welcome back.",
+                MessageTone.Minimal => "Back.",
+                _ => "Welcome back!",
+            };
         }
 
-        var timeOfDayGreeting = now.Hour switch
+        if (tone == MessageTone.Minimal)
         {
-            < 12 => "Good morning",
-            < 18 => "Good afternoon",
-            _ => "Good evening",
-        };
+            return $"{TimeOfDayGreeting(now)}, {name}.";
+        }
 
-        var name = string.IsNullOrWhiteSpace(userName) ? "there" : userName;
-        return $"{timeOfDayGreeting}, {name}! Are you ready to ace your day?";
+        var isWeekend = now.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+        if (isWeekend)
+        {
+            var weekendGreeting = now.DayOfWeek == DayOfWeek.Saturday ? "Happy Saturday" : "Happy Sunday";
+            return tone == MessageTone.Calm
+                ? $"{weekendGreeting}, {name}. Hope you get some rest."
+                : $"{weekendGreeting}, {name}! Enjoy your day off.";
+        }
+
+        var timeOfDayGreeting = TimeOfDayGreeting(now);
+        return tone == MessageTone.Calm
+            ? $"{timeOfDayGreeting}, {name}. Hope you have a peaceful day."
+            : $"{timeOfDayGreeting}, {name}! Are you ready to ace your day?";
     }
+
+    private static string TimeOfDayGreeting(DateTimeOffset now) => now.Hour switch
+    {
+        < 12 => "Good morning",
+        < 18 => "Good afternoon",
+        _ => "Good evening",
+    };
 }

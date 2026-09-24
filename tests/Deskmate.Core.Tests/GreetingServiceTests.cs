@@ -1,5 +1,6 @@
 using System;
 using Deskmate.Core;
+using Deskmate.Core.Models;
 
 namespace Deskmate.Core.Tests;
 
@@ -61,9 +62,9 @@ public class GreetingServiceTests
     public void BuildMessage_Full_VariesByTimeOfDay(int hour, string expectedPrefix)
     {
         var sut = new GreetingService();
-        var now = new DateTimeOffset(2026, 9, 21, hour, 0, 0, TimeSpan.Zero);
+        var now = new DateTimeOffset(2026, 9, 21, hour, 0, 0, TimeSpan.Zero); // a Monday
 
-        var message = sut.BuildMessage(GreetingKind.Full, "Alex", now);
+        var message = sut.BuildMessage(GreetingKind.Full, "Alex", now, MessageTone.Cheerful);
 
         Assert.StartsWith(expectedPrefix + ", Alex!", message);
     }
@@ -73,7 +74,8 @@ public class GreetingServiceTests
     {
         var sut = new GreetingService();
 
-        var message = sut.BuildMessage(GreetingKind.Full, "", new DateTimeOffset(2026, 9, 21, 9, 0, 0, TimeSpan.Zero));
+        var message = sut.BuildMessage(
+            GreetingKind.Full, "", new DateTimeOffset(2026, 9, 21, 9, 0, 0, TimeSpan.Zero), MessageTone.Cheerful);
 
         Assert.StartsWith("Good morning, there!", message);
     }
@@ -83,8 +85,46 @@ public class GreetingServiceTests
     {
         var sut = new GreetingService();
 
-        var message = sut.BuildMessage(GreetingKind.WelcomeBack, "Alex", DateTimeOffset.Now);
+        var message = sut.BuildMessage(GreetingKind.WelcomeBack, "Alex", DateTimeOffset.Now, MessageTone.Cheerful);
 
         Assert.Equal("Welcome back!", message);
+    }
+
+    [Theory]
+    [InlineData(MessageTone.Cheerful, "Good morning, Alex!")]
+    [InlineData(MessageTone.Calm, "Good morning, Alex. Hope you have a peaceful day.")]
+    [InlineData(MessageTone.Minimal, "Good morning, Alex.")]
+    public void BuildMessage_Full_VariesByTone(MessageTone tone, string expected)
+    {
+        var sut = new GreetingService();
+        var monday = new DateTimeOffset(2026, 9, 21, 9, 0, 0, TimeSpan.Zero);
+
+        var message = sut.BuildMessage(GreetingKind.Full, "Alex", monday, tone);
+
+        Assert.StartsWith(expected, message);
+    }
+
+    [Theory]
+    [InlineData(2026, 9, 26, "Happy Saturday")] // Saturday
+    [InlineData(2026, 9, 27, "Happy Sunday")] // Sunday
+    public void BuildMessage_Full_Weekend_UsesWeekendGreeting(int year, int month, int day, string expectedPrefix)
+    {
+        var sut = new GreetingService();
+        var weekend = new DateTimeOffset(year, month, day, 9, 0, 0, TimeSpan.Zero);
+
+        var message = sut.BuildMessage(GreetingKind.Full, "Alex", weekend, MessageTone.Cheerful);
+
+        Assert.StartsWith(expectedPrefix + ", Alex!", message);
+    }
+
+    [Fact]
+    public void BuildMessage_Full_Weekend_Minimal_StillUsesTimeOfDay()
+    {
+        var sut = new GreetingService();
+        var saturday = new DateTimeOffset(2026, 9, 26, 9, 0, 0, TimeSpan.Zero);
+
+        var message = sut.BuildMessage(GreetingKind.Full, "Alex", saturday, MessageTone.Minimal);
+
+        Assert.Equal("Good morning, Alex.", message);
     }
 }

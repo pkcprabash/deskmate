@@ -56,6 +56,9 @@ public partial class SettingsWindow : Window
         SleepAfterMinutes.Value = (decimal)settings.SleepAfter.TotalMinutes;
         BreakAfterMinutes.Value = (decimal)settings.BreakAfter.TotalMinutes;
         StartAtLoginCheckBox.IsChecked = settings.StartAtLogin;
+        QuietHoursEnabledCheckBox.IsChecked = settings.QuietHoursStart is not null && settings.QuietHoursEnd is not null;
+        QuietHoursStartPicker.SelectedTime = (settings.QuietHoursStart ?? new TimeOnly(22, 0)).ToTimeSpan();
+        QuietHoursEndPicker.SelectedTime = (settings.QuietHoursEnd ?? new TimeOnly(7, 0)).ToTimeSpan();
 
         await ReloadRemindersAsync();
     }
@@ -160,6 +163,19 @@ public partial class SettingsWindow : Window
             settings.SleepAfter = TimeSpan.FromMinutes((double)(SleepAfterMinutes.Value ?? 10));
             settings.BreakAfter = TimeSpan.FromMinutes((double)(BreakAfterMinutes.Value ?? 50));
             settings.StartAtLogin = startAtLogin;
+
+            if (QuietHoursEnabledCheckBox.IsChecked == true
+                && QuietHoursStartPicker.SelectedTime is { } quietStart
+                && QuietHoursEndPicker.SelectedTime is { } quietEnd)
+            {
+                settings.QuietHoursStart = TimeOnly.FromTimeSpan(quietStart);
+                settings.QuietHoursEnd = TimeOnly.FromTimeSpan(quietEnd);
+            }
+            else
+            {
+                settings.QuietHoursStart = null;
+                settings.QuietHoursEnd = null;
+            }
         });
 
         if (startAtLogin)

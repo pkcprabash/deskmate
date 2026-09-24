@@ -17,6 +17,8 @@ public class UserSettings
     public MessageTone Tone { get; set; } = MessageTone.Cheerful;
     public TimeSpan SleepAfter { get; set; } = TimeSpan.FromMinutes(10);
     public TimeSpan BreakAfter { get; set; } = TimeSpan.FromMinutes(50);
+    public TimeOnly? QuietHoursStart { get; set; }
+    public TimeOnly? QuietHoursEnd { get; set; }
     public bool StartAtLogin { get; set; } = true;
     public DateOnly? LastGreetingDate { get; set; }
     public bool FirstRunCompleted { get; set; }

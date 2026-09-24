@@ -18,6 +18,7 @@ namespace Deskmate.Infrastructure.Reminders;
 /// </summary>
 public sealed class ReminderScheduler(
     ReminderService reminderService,
+    SettingsService settingsService,
     ISessionEventsMonitor sessionEventsMonitor,
     ILogger<ReminderScheduler> logger) : BackgroundService
 {
@@ -75,6 +76,14 @@ public sealed class ReminderScheduler(
             var now = DateTimeOffset.Now;
             var today = DateOnly.FromDateTime(now.Date);
             await reminderService.EnsureOccurrencesGeneratedAsync(_rules, today, today.AddDays(GenerateAheadDays), cancellationToken);
+
+            var settings = await settingsService.GetOrCreateAsync(cancellationToken);
+            var withinQuietHours = QuietHours.IsWithin(settings.QuietHoursStart, settings.QuietHoursEnd, TimeOnly.FromDateTime(now.DateTime));
+            if (withinQuietHours)
+            {
+                // Leave occurrences unmarked so the next check (once quiet hours end) picks them up fresh.
+                return;
+            }
 
             var pending = await reminderService.GetPendingOccurrencesAsync(cancellationToken);
             foreach (var (reminder, occurrence) in pending)

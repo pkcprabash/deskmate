@@ -108,6 +108,23 @@ public class AvatarStateMachineTests
         Assert.Equal(AvatarState.SuggestingBreak, sut.CurrentState);
     }
 
+    [Fact]
+    public void Tick_SuppressBreakSuggestions_SkipsYawnButStillSleeps()
+    {
+        var sut = new AvatarStateMachine
+        {
+            BreakAfter = TimeSpan.FromMinutes(50),
+            SleepAfter = TimeSpan.FromMinutes(10),
+            SuppressBreakSuggestions = true,
+        };
+
+        sut.Tick(idleFor: TimeSpan.Zero, activeFor: TimeSpan.FromMinutes(50));
+        Assert.Equal(AvatarState.Idle, sut.CurrentState);
+
+        sut.Tick(idleFor: TimeSpan.FromMinutes(10), activeFor: TimeSpan.FromMinutes(50));
+        Assert.Equal(AvatarState.Sleeping, sut.CurrentState);
+    }
+
     [Theory]
     [InlineData(AvatarInput.BreakAccepted)]
     [InlineData(AvatarInput.BreakSnoozed)]

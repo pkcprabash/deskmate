@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="Deskmate.App.Views.SettingsWindow"
         Title="Deskmate Settings"
-        Width="420" Height="440"
+        Width="420" Height="480"
         CanResize="False"
         WindowStartupLocation="CenterScreen">
 
@@ -68,6 +68,17 @@
                         <NumericUpDown Name="BreakAfterMinutes" Minimum="5" Maximum="180" Increment="5" FormatString="0" />
                     </StackPanel>
                     <CheckBox Name="StartAtLoginCheckBox" Content="Start Deskmate at login" />
+                    <CheckBox Name="QuietHoursEnabledCheckBox" Content="Quiet hours (pause break suggestions and reminder alerts)" />
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="From" />
+                            <TimePicker Name="QuietHoursStartPicker" />
+                        </StackPanel>
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="To" />
+                            <TimePicker Name="QuietHoursEndPicker" />
+                        </StackPanel>
+                    </StackPanel>
                 </StackPanel>
             </TabItem>
 

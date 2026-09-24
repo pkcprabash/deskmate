@@ -7,6 +7,7 @@ using Deskmate.App.Views;
 using Deskmate.Infrastructure.Activity;
 using Deskmate.Infrastructure.Avatars;
 using Deskmate.Infrastructure.Data;
+using Deskmate.Infrastructure.Display;
 using Deskmate.Infrastructure.Notifications;
 using Deskmate.Infrastructure.Reminders;
 using Deskmate.Infrastructure.Startup;
@@ -18,6 +19,8 @@ namespace Deskmate.App;
 public partial class App : Application
 {
     public static IHost? Host { get; set; }
+
+    private AvatarWindow? _avatarWindow;
 
     public override void Initialize()
     {
@@ -46,16 +49,17 @@ public partial class App : Application
                 };
                 firstRun.Completed += () =>
                 {
-                    var avatarWindow = CreateAvatarWindow(settingsService, startupRegistration);
-                    avatarWindow.Show();
-                    desktop.MainWindow = avatarWindow;
+                    _avatarWindow = CreateAvatarWindow(settingsService, startupRegistration);
+                    _avatarWindow.Show();
+                    desktop.MainWindow = _avatarWindow;
                     firstRun.Close();
                 };
                 desktop.MainWindow = firstRun;
             }
             else
             {
-                desktop.MainWindow = CreateAvatarWindow(settingsService, startupRegistration);
+                _avatarWindow = CreateAvatarWindow(settingsService, startupRegistration);
+                desktop.MainWindow = _avatarWindow;
             }
         }
 
@@ -70,12 +74,14 @@ public partial class App : Application
         var reminderScheduler = Host!.Services.GetRequiredService<ReminderScheduler>();
         var reminderService = Host!.Services.GetRequiredService<ReminderService>();
         var notificationService = Host!.Services.GetRequiredService<NotificationService>();
+        var fullScreenDetector = Host!.Services.GetRequiredService<IFullScreenDetector>();
 
         return new AvatarWindow
         {
             SettingsService = settingsService,
             StartupRegistration = startupRegistration,
             ReminderService = reminderService,
+            FullScreenDetector = fullScreenDetector,
             DataContext = new AvatarViewModel(
                 settingsService, avatarPackLoader, idleMonitor, sessionEventsMonitor,
                 reminderScheduler, reminderService, notificationService),
@@ -86,4 +92,12 @@ public partial class App : Application
     {
         (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
     }
+
+    private void OnTraySettingsClicked(object? sender, EventArgs e) => _avatarWindow?.ShowSettings();
+
+    private void OnTrayPauseHourClicked(object? sender, EventArgs e) => _avatarWindow?.PauseForOneHour();
+
+    private void OnTrayPauseTomorrowClicked(object? sender, EventArgs e) => _avatarWindow?.PauseUntilTomorrow();
+
+    private void OnTrayResumeClicked(object? sender, EventArgs e) => _avatarWindow?.Resume();
 }

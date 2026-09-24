@@ -42,6 +42,9 @@ public class AvatarStateMachine(Func<int>? randomGesturePicker = null)
     /// <summary>How long the avatar lets you work before suggesting a break.</summary>
     public TimeSpan BreakAfter { get; set; } = TimeSpan.FromMinutes(50);
 
+    /// <summary>Set during quiet hours: sleep and idle gestures still happen, but break nagging doesn't.</summary>
+    public bool SuppressBreakSuggestions { get; set; }
+
     public void Apply(AvatarInput input)
     {
         CurrentState = input switch
@@ -92,7 +95,7 @@ public class AvatarStateMachine(Func<int>? randomGesturePicker = null)
             return;
         }
 
-        if (activeFor >= BreakAfter)
+        if (!SuppressBreakSuggestions && activeFor >= BreakAfter)
         {
             CurrentState = AvatarState.Yawning;
         }

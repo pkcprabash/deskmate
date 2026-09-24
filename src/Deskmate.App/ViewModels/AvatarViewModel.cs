@@ -35,18 +35,26 @@ public class AvatarViewModel(
     private bool _isFirstTick = true;
     private bool _subscribedToBackgroundEvents;
     private string _userName = "";
+    private MessageTone _tone = MessageTone.Cheerful;
     private DateOnly? _lastGreetingDate;
     private DateTimeOffset? _lastWelcomeBackAt;
+    private TimeOnly? _quietHoursStart;
+    private TimeOnly? _quietHoursEnd;
+    private DateTimeOffset? _pausedUntil;
     private (Reminder Reminder, ReminderOccurrence Occurrence)? _activeReminderAlert;
 
     public double? SavedPositionX { get; private set; }
     public double? SavedPositionY { get; private set; }
     public LoadedAvatarPack? Pack { get; private set; }
+    public double AvatarScale { get; private set; } = 1.0;
     public AvatarState CurrentState => _stateMachine.CurrentState;
+    public bool IsPaused => _pausedUntil is { } until && DateTimeOffset.Now < until;
+    public string BreakSuggestionMessage => MessagePhrasing.BreakSuggestion(_tone);
 
     public event Action<AvatarState>? StateChanged;
     public event Action<string>? GreetingReady;
     public event Action<string>? ReminderAlertReady;
+    public event Action<bool>? PausedChanged;
 
     /// <summary>
     /// Loads (or reloads, after the user changes something in Settings) the current
@@ -59,10 +67,14 @@ public class AvatarViewModel(
         SavedPositionX = settings.PositionX;
         SavedPositionY = settings.PositionY;
         Pack = LoadedAvatarPack.Load(avatarPackLoader, settings.AvatarPack);
+        AvatarScale = settings.AvatarScale;
         _stateMachine.SleepAfter = settings.SleepAfter;
         _stateMachine.BreakAfter = settings.BreakAfter;
         _userName = settings.UserName;
+        _tone = settings.Tone;
         _lastGreetingDate = settings.LastGreetingDate;
+        _quietHoursStart = settings.QuietHoursStart;
+        _quietHoursEnd = settings.QuietHoursEnd;
 
         if (!_subscribedToBackgroundEvents)
         {
@@ -131,6 +143,33 @@ public class AvatarViewModel(
         TryShowNextReminderAlert();
     }
 
+    /// <summary>Pause mode: the avatar hides and stops noticing anything until it lifts.</summary>
+    public void NotifyPauseFor(TimeSpan duration)
+    {
+        _pausedUntil = DateTimeOffset.Now.Add(duration);
+        PausedChanged?.Invoke(true);
+    }
+
+    /// <summary>Pauses until the start of the next calendar day (local time).</summary>
+    public void NotifyPauseUntilTomorrow()
+    {
+        var tomorrow = DateOnly.FromDateTime(DateTime.Now.AddDays(1));
+        _pausedUntil = new DateTimeOffset(tomorrow.ToDateTime(TimeOnly.MinValue));
+        PausedChanged?.Invoke(true);
+    }
+
+    public void NotifyResume()
+    {
+        if (_pausedUntil is null)
+        {
+            return;
+        }
+
+        _pausedUntil = null;
+        PausedChanged?.Invoke(false);
+        TryShowNextReminderAlert();
+    }
+
     /// <summary>
     /// Shows a greeting if one is due: the full "Good morning, Alex!" on the first
     /// unlock/launch of the day, a lighter "Welcome back!" (at most once an hour) later.
@@ -138,6 +177,11 @@ public class AvatarViewModel(
     /// </summary>
     public void NotifyPossibleGreeting()
     {
+        if (IsPaused)
+        {
+            return;
+        }
+
         var now = DateTimeOffset.Now;
         var today = DateOnly.FromDateTime(now.LocalDateTime);
         var kind = _greetingService.DetermineKind(_lastGreetingDate, today, _lastWelcomeBackAt, now);
@@ -155,7 +199,7 @@ public class AvatarViewModel(
             _ = settingsService.UpdateAsync(_settingsId, s => s.LastGreetingDate = today);
         }
 
-        GreetingReady?.Invoke(_greetingService.BuildMessage(kind, _userName, now));
+        GreetingReady?.Invoke(_greetingService.BuildMessage(kind, _userName, now, _tone));
     }
 
     /// <summary>
@@ -165,6 +209,18 @@ public class AvatarViewModel(
     /// </summary>
     public void NotifyTick()
     {
+        if (_pausedUntil is { } until)
+        {
+            if (DateTimeOffset.Now < until)
+            {
+                return;
+            }
+
+            _pausedUntil = null;
+            PausedChanged?.Invoke(false);
+            TryShowNextReminderAlert();
+        }
+
         var idleFor = idleMonitor.GetIdleDuration();
 
         if (!_isFirstTick && idleFor < TickInterval)
@@ -173,6 +229,8 @@ public class AvatarViewModel(
         }
 
         _isFirstTick = false;
+
+        _stateMachine.SuppressBreakSuggestions = QuietHours.IsWithin(_quietHoursStart, _quietHoursEnd, TimeOnly.FromDateTime(DateTime.Now));
 
         var previous = _stateMachine.CurrentState;
         _stateMachine.Tick(idleFor, DateTimeOffset.UtcNow - _workSessionStartedAt);
@@ -212,7 +270,7 @@ public class AvatarViewModel(
     /// <summary>Only one alert is shown at a time; the rest wait their turn.</summary>
     private void TryShowNextReminderAlert()
     {
-        if (_activeReminderAlert is not null || _pendingReminderAlerts.Count == 0)
+        if (IsPaused || _activeReminderAlert is not null || _pendingReminderAlerts.Count == 0)
         {
             return;
         }
