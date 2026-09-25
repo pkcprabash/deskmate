@@ -6,6 +6,14 @@ when you're away, nudges you to rest after long stretches of work, greets you
 by name each morning, and reminds you about the things that matter, the day
 before and on the day.
 
+## Focus sessions (Pomodoro)
+
+Start a focus session from the tray icon. Deskmate cheers you into each focus period,
+takes a coffee break with you when it ends, and moves to a long break after a set number of
+sessions. The tray tooltip shows the time left. Lengths are set in Settings > Focus. While a
+session runs, the regular "time for a break?" nudge is turned off. Messages go to a native
+notification if the avatar is hidden, and stay silent during quiet hours or pause.
+
 ## Install
 
 Download the latest installer for Windows or macOS from

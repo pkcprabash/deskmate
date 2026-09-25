@@ -173,4 +173,27 @@ public class AvatarStateMachineTests
 
         Assert.Equal(AvatarState.Alerting, sut.CurrentState);
     }
+
+    [Fact]
+    public void PomodoroBreakStarted_WhenIdle_SipsCoffeeThenReturnsToIdle()
+    {
+        var sut = new AvatarStateMachine();
+
+        sut.Apply(AvatarInput.PomodoroBreakStarted);
+        Assert.Equal(AvatarState.SippingCoffee, sut.CurrentState);
+
+        sut.Apply(AvatarInput.AnimationCompleted);
+        Assert.Equal(AvatarState.Idle, sut.CurrentState);
+    }
+
+    [Fact]
+    public void PomodoroBreakStarted_WhileAlerting_DoesNotInterrupt()
+    {
+        var sut = new AvatarStateMachine();
+        sut.Apply(AvatarInput.ReminderDue);
+
+        sut.Apply(AvatarInput.PomodoroBreakStarted);
+
+        Assert.Equal(AvatarState.Alerting, sut.CurrentState);
+    }
 }

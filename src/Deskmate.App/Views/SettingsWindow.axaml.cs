@@ -57,6 +57,10 @@ public partial class SettingsWindow : Window
         BreakAfterMinutes.Value = (decimal)settings.BreakAfter.TotalMinutes;
         StartAtLoginCheckBox.IsChecked = settings.StartAtLogin;
         ReducedMotionCheckBox.IsChecked = settings.ReducedMotion;
+        PomodoroFocusMinutes.Value = (decimal)settings.PomodoroFocus.TotalMinutes;
+        PomodoroShortBreakMinutes.Value = (decimal)settings.PomodoroShortBreak.TotalMinutes;
+        PomodoroLongBreakMinutes.Value = (decimal)settings.PomodoroLongBreak.TotalMinutes;
+        PomodoroSessionsBeforeLongBreak.Value = settings.PomodoroSessionsBeforeLongBreak;
         QuietHoursEnabledCheckBox.IsChecked = settings.QuietHoursStart is not null && settings.QuietHoursEnd is not null;
         QuietHoursStartPicker.SelectedTime = (settings.QuietHoursStart ?? new TimeOnly(22, 0)).ToTimeSpan();
         QuietHoursEndPicker.SelectedTime = (settings.QuietHoursEnd ?? new TimeOnly(7, 0)).ToTimeSpan();
@@ -165,6 +169,10 @@ public partial class SettingsWindow : Window
             settings.BreakAfter = TimeSpan.FromMinutes((double)(BreakAfterMinutes.Value ?? 50));
             settings.StartAtLogin = startAtLogin;
             settings.ReducedMotion = ReducedMotionCheckBox.IsChecked ?? false;
+            settings.PomodoroFocus = TimeSpan.FromMinutes((double)(PomodoroFocusMinutes.Value ?? 25));
+            settings.PomodoroShortBreak = TimeSpan.FromMinutes((double)(PomodoroShortBreakMinutes.Value ?? 5));
+            settings.PomodoroLongBreak = TimeSpan.FromMinutes((double)(PomodoroLongBreakMinutes.Value ?? 15));
+            settings.PomodoroSessionsBeforeLongBreak = (int)(PomodoroSessionsBeforeLongBreak.Value ?? 4);
 
             if (QuietHoursEnabledCheckBox.IsChecked == true
                 && QuietHoursStartPicker.SelectedTime is { } quietStart

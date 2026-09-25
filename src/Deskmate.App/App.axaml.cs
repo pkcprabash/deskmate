@@ -1,5 +1,6 @@
 using System;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Deskmate.App.ViewModels;
@@ -76,7 +77,7 @@ public partial class App : Application
         var notificationService = Host!.Services.GetRequiredService<NotificationService>();
         var fullScreenDetector = Host!.Services.GetRequiredService<IFullScreenDetector>();
 
-        return new AvatarWindow
+        var window = new AvatarWindow
         {
             SettingsService = settingsService,
             StartupRegistration = startupRegistration,
@@ -86,6 +87,9 @@ public partial class App : Application
                 settingsService, avatarPackLoader, idleMonitor, sessionEventsMonitor,
                 reminderScheduler, reminderService, notificationService),
         };
+
+        window.PomodoroStatusChanged += OnPomodoroStatusChanged;
+        return window;
     }
 
     private void OnQuitClicked(object? sender, EventArgs e)
@@ -98,6 +102,20 @@ public partial class App : Application
     private void OnTrayPauseHourClicked(object? sender, EventArgs e) => _avatarWindow?.PauseForOneHour();
 
     private void OnTrayPauseTomorrowClicked(object? sender, EventArgs e) => _avatarWindow?.PauseUntilTomorrow();
+
+    private void OnTrayPomodoroStartClicked(object? sender, EventArgs e) => _avatarWindow?.StartPomodoro();
+
+    private void OnTrayPomodoroSkipClicked(object? sender, EventArgs e) => _avatarWindow?.SkipPomodoroPhase();
+
+    private void OnTrayPomodoroStopClicked(object? sender, EventArgs e) => _avatarWindow?.StopPomodoro();
+
+    private void OnPomodoroStatusChanged(string status)
+    {
+        if (TrayIcon.GetIcons(this) is { Count: > 0 } icons)
+        {
+            icons[0].ToolTipText = status.Length == 0 ? "Deskmate" : $"Deskmate — {status}";
+        }
+    }
 
     private void OnTrayResumeClicked(object? sender, EventArgs e) => _avatarWindow?.Resume();
 }

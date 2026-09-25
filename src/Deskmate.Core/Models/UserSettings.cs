@@ -20,6 +20,10 @@ public class UserSettings
     public TimeOnly? QuietHoursStart { get; set; }
     public TimeOnly? QuietHoursEnd { get; set; }
     public bool ReducedMotion { get; set; }
+    public TimeSpan PomodoroFocus { get; set; } = TimeSpan.FromMinutes(25);
+    public TimeSpan PomodoroShortBreak { get; set; } = TimeSpan.FromMinutes(5);
+    public TimeSpan PomodoroLongBreak { get; set; } = TimeSpan.FromMinutes(15);
+    public int PomodoroSessionsBeforeLongBreak { get; set; } = 4;
     public bool StartAtLogin { get; set; } = true;
     public DateOnly? LastGreetingDate { get; set; }
     public bool FirstRunCompleted { get; set; }

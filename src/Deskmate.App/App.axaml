@@ -20,6 +20,10 @@
                     <NativeMenu>
                         <NativeMenuItem Header="Settings…" Click="OnTraySettingsClicked" />
                         <NativeMenuItemSeparator />
+                        <NativeMenuItem Header="Start focus session" Click="OnTrayPomodoroStartClicked" />
+                        <NativeMenuItem Header="Skip to next phase" Click="OnTrayPomodoroSkipClicked" />
+                        <NativeMenuItem Header="Stop focus session" Click="OnTrayPomodoroStopClicked" />
+                        <NativeMenuItemSeparator />
                         <NativeMenuItem Header="Pause for 1 hour" Click="OnTrayPauseHourClicked" />
                         <NativeMenuItem Header="Pause until tomorrow" Click="OnTrayPauseTomorrowClicked" />
                         <NativeMenuItem Header="Resume" Click="OnTrayResumeClicked" />

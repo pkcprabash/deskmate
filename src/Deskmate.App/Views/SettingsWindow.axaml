@@ -83,6 +83,29 @@
                 </StackPanel>
             </TabItem>
 
+            <TabItem Header="_Focus">
+                <StackPanel Spacing="10" Margin="8">
+                    <TextBlock TextWrapping="Wrap"
+                               Text="Pomodoro: start a focus session from the tray icon. Deskmate cheers you through focus and break periods, and skips its usual break nudges while a session runs." />
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Focus length (minutes)" />
+                        <NumericUpDown Name="PomodoroFocusMinutes" Minimum="1" Maximum="120" Increment="5" FormatString="0" />
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Short break (minutes)" />
+                        <NumericUpDown Name="PomodoroShortBreakMinutes" Minimum="1" Maximum="60" Increment="1" FormatString="0" />
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Long break (minutes)" />
+                        <NumericUpDown Name="PomodoroLongBreakMinutes" Minimum="1" Maximum="120" Increment="5" FormatString="0" />
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Focus sessions before a long break" />
+                        <NumericUpDown Name="PomodoroSessionsBeforeLongBreak" Minimum="1" Maximum="12" Increment="1" FormatString="0" />
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+
             <TabItem Header="_Reminders">
                 <DockPanel Margin="8">
                     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">

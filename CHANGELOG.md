@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Pomodoro focus sessions: start/skip/stop from the tray, configurable lengths, avatar and tone-aware messages, live time-left tray tooltip.
+
 ## 1.0.0
 
 First public release.

@@ -59,6 +59,7 @@ public class AvatarStateMachine(Func<int>? randomGesturePicker = null)
             AvatarInput.BreakAccepted when CurrentState == AvatarState.SuggestingBreak => AvatarState.Idle,
             AvatarInput.BreakSnoozed when CurrentState == AvatarState.SuggestingBreak => AvatarState.Idle,
             AvatarInput.ReminderDue when CurrentState is not (AvatarState.Held or AvatarState.Alerting or AvatarState.SuggestingBreak) => AvatarState.Alerting,
+            AvatarInput.PomodoroBreakStarted when IsRestable(CurrentState) => AvatarState.SippingCoffee,
             AvatarInput.AlertDismissed when CurrentState == AvatarState.Alerting => AvatarState.Idle,
             _ => CurrentState,
         };

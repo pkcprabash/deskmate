@@ -28,6 +28,7 @@ public class AvatarViewModel(
 
     private readonly AvatarStateMachine _stateMachine = new();
     private readonly GreetingService _greetingService = new();
+    private readonly PomodoroTimer _pomodoro = new();
     private readonly Queue<(Reminder Reminder, ReminderOccurrence Occurrence, ReminderAlertKind Kind)> _pendingReminderAlerts = new();
 
     private int _settingsId;
@@ -42,12 +43,17 @@ public class AvatarViewModel(
     private TimeOnly? _quietHoursEnd;
     private DateTimeOffset? _pausedUntil;
     private (Reminder Reminder, ReminderOccurrence Occurrence)? _activeReminderAlert;
+    private string _lastPomodoroStatus = "";
 
     public double? SavedPositionX { get; private set; }
     public double? SavedPositionY { get; private set; }
     public LoadedAvatarPack? Pack { get; private set; }
     public double AvatarScale { get; private set; } = 1.0;
     public bool ReducedMotion { get; private set; }
+    public bool IsPomodoroRunning => _pomodoro.IsRunning;
+
+    /// <summary>Set by the window when the avatar can't be seen (paused or a full-screen app), so messages go to a native notification instead.</summary>
+    public bool IsAvatarHidden { get; set; }
     public AvatarState CurrentState => _stateMachine.CurrentState;
     public bool IsPaused => _pausedUntil is { } until && DateTimeOffset.Now < until;
     public string BreakSuggestionMessage => MessagePhrasing.BreakSuggestion(_tone);
@@ -56,6 +62,10 @@ public class AvatarViewModel(
     public event Action<string>? GreetingReady;
     public event Action<string>? ReminderAlertReady;
     public event Action<bool>? PausedChanged;
+    public event Action<string>? PomodoroMessageReady;
+
+    /// <summary>Raised when the tray tooltip text should change, e.g. "Focus 12 min left" (empty when stopped).</summary>
+    public event Action<string>? PomodoroStatusChanged;
 
     /// <summary>
     /// Loads (or reloads, after the user changes something in Settings) the current
@@ -77,6 +87,8 @@ public class AvatarViewModel(
         _lastGreetingDate = settings.LastGreetingDate;
         _quietHoursStart = settings.QuietHoursStart;
         _quietHoursEnd = settings.QuietHoursEnd;
+        _pomodoro.Settings = new PomodoroSettings(
+            settings.PomodoroFocus, settings.PomodoroShortBreak, settings.PomodoroLongBreak, settings.PomodoroSessionsBeforeLongBreak);
 
         if (!_subscribedToBackgroundEvents)
         {
@@ -143,6 +155,107 @@ public class AvatarViewModel(
         _activeReminderAlert = null;
         Transition(AvatarInput.AlertDismissed);
         TryShowNextReminderAlert();
+    }
+
+    public void StartPomodoro()
+    {
+        if (_pomodoro.IsRunning)
+        {
+            return;
+        }
+
+        _pomodoro.Start(DateTimeOffset.Now);
+        AnnouncePomodoroPhase();
+        RefreshPomodoroStatus();
+    }
+
+    public void StopPomodoro()
+    {
+        if (!_pomodoro.IsRunning)
+        {
+            return;
+        }
+
+        _pomodoro.Stop();
+        _workSessionStartedAt = DateTimeOffset.UtcNow;
+        Announce(MessagePhrasing.PomodoroStopped(_tone));
+        RefreshPomodoroStatus();
+    }
+
+    public void SkipPomodoroPhase()
+    {
+        if (_pomodoro.Skip(DateTimeOffset.Now))
+        {
+            OnPomodoroPhaseChanged();
+        }
+    }
+
+    private void OnPomodoroPhaseChanged()
+    {
+        AnnouncePomodoroPhase();
+        RefreshPomodoroStatus();
+    }
+
+    private void AnnouncePomodoroPhase()
+    {
+        var settings = _pomodoro.Settings;
+
+        switch (_pomodoro.Phase)
+        {
+            case PomodoroPhase.Focus:
+                Announce(MessagePhrasing.PomodoroFocusStarted(_tone, (int)settings.FocusDuration.TotalMinutes));
+                break;
+            case PomodoroPhase.ShortBreak:
+            case PomodoroPhase.LongBreak:
+                var isLong = _pomodoro.Phase == PomodoroPhase.LongBreak;
+                var duration = isLong ? settings.LongBreakDuration : settings.ShortBreakDuration;
+                _workSessionStartedAt = DateTimeOffset.UtcNow;
+                Announce(MessagePhrasing.PomodoroBreakStarted(_tone, isLong, (int)duration.TotalMinutes));
+                Transition(AvatarInput.PomodoroBreakStarted);
+                break;
+        }
+    }
+
+    /// <summary>Speech bubble when the avatar is visible, native notification when it isn't. Silent during quiet hours or pause.</summary>
+    private void Announce(string message)
+    {
+        if (IsPaused || QuietHours.IsWithin(_quietHoursStart, _quietHoursEnd, TimeOnly.FromDateTime(DateTime.Now)))
+        {
+            return;
+        }
+
+        if (IsAvatarHidden)
+        {
+            _ = notificationService.ShowAsync("Deskmate", message);
+        }
+        else
+        {
+            PomodoroMessageReady?.Invoke(message);
+        }
+    }
+
+    private void RefreshPomodoroStatus()
+    {
+        var status = "";
+        if (_pomodoro.IsRunning)
+        {
+            var label = _pomodoro.Phase switch
+            {
+                PomodoroPhase.Focus => "Focus",
+                PomodoroPhase.LongBreak => "Long break",
+                _ => "Break",
+            };
+            var minutesLeft = (int)Math.Ceiling(_pomodoro.Remaining(DateTimeOffset.Now).TotalMinutes);
+            status = $"{label}: {minutesLeft} min left";
+        }
+
+        if (status == _lastPomodoroStatus)
+        {
+            return;
+        }
+
+        _lastPomodoroStatus = status;
+        PomodoroStatusChanged?.Invoke(status);
     }
 
     /// <summary>Pause mode: the avatar hides and stops noticing anything until it lifts.</summary>
@@ -223,6 +336,15 @@ public class AvatarViewModel(
             TryShowNextReminderAlert();
         }
 
+        if (_pomodoro.Tick(DateTimeOffset.Now))
+        {
+            OnPomodoroPhaseChanged();
+        }
+        else
+        {
+            RefreshPomodoroStatus();
+        }
+
         var idleFor = idleMonitor.GetIdleDuration();
 
         if (!_isFirstTick && idleFor < TickInterval)
@@ -232,7 +354,9 @@ public class AvatarViewModel(
 
         _isFirstTick = false;
 
-        _stateMachine.SuppressBreakSuggestions = QuietHours.IsWithin(_quietHoursStart, _quietHoursEnd, TimeOnly.FromDateTime(DateTime.Now));
+        // The Pomodoro cycle schedules the breaks itself, so the generic "you've been working a while" nudge steps aside.
+        _stateMachine.SuppressBreakSuggestions = _pomodoro.IsRunning
+            || QuietHours.IsWithin(_quietHoursStart, _quietHoursEnd, TimeOnly.FromDateTime(DateTime.Now));
 
         var previous = _stateMachine.CurrentState;
         _stateMachine.Tick(idleFor, DateTimeOffset.UtcNow - _workSessionStartedAt);

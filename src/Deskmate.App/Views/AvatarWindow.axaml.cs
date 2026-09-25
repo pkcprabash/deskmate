@@ -63,6 +63,8 @@ public partial class AvatarWindow : Window
         viewModel.GreetingReady += OnGreetingReady;
         viewModel.ReminderAlertReady += OnReminderAlertReady;
         viewModel.PausedChanged += OnPausedChanged;
+        viewModel.PomodoroMessageReady += OnPomodoroMessageReady;
+        viewModel.PomodoroStatusChanged += status => PomodoroStatusChanged?.Invoke(status);
         OnStateChanged(viewModel.CurrentState);
         viewModel.NotifyPossibleGreeting();
         viewModel.NotifyReadyForReminders();
@@ -109,6 +111,11 @@ public partial class AvatarWindow : Window
 
     private void UpdateVisibility()
     {
+        if (DataContext is AvatarViewModel viewModel)
+        {
+            viewModel.IsAvatarHidden = _isPausedHidden || _isFullScreenHidden;
+        }
+
         if (_isPausedHidden || _isFullScreenHidden)
         {
             Hide();
@@ -204,7 +211,11 @@ public partial class AvatarWindow : Window
         UpdateVisibility();
     }
 
-    private void OnGreetingReady(string message)
+    private void OnGreetingReady(string message) => ShowTimedBubble(message);
+
+    private void OnPomodoroMessageReady(string message) => ShowTimedBubble(message);
+
+    private void ShowTimedBubble(string message)
     {
         _greetingBubble?.Close();
         _greetingBubble = CreateBubble(message, "", "", onPrimaryClicked: () => { }, onSecondaryClicked: () => { });
@@ -390,6 +401,15 @@ public partial class AvatarWindow : Window
     public void PauseForOneHour() => (DataContext as AvatarViewModel)?.NotifyPauseFor(TimeSpan.FromHours(1));
 
     public void PauseUntilTomorrow() => (DataContext as AvatarViewModel)?.NotifyPauseUntilTomorrow();
+
+    public void StartPomodoro() => (DataContext as AvatarViewModel)?.StartPomodoro();
+
+    public void StopPomodoro() => (DataContext as AvatarViewModel)?.StopPomodoro();
+
+    public void SkipPomodoroPhase() => (DataContext as AvatarViewModel)?.SkipPomodoroPhase();
+
+    /// <summary>Raised with the tray tooltip text for the running Pomodoro (empty when stopped).</summary>
+    public event Action<string>? PomodoroStatusChanged;
 
     public void Resume() => (DataContext as AvatarViewModel)?.NotifyResume();
 
