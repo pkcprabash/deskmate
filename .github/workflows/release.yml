@@ -1,0 +1,93 @@
+name: Release
+
+# Push a tag like v1.0.0 to build, sign, notarize and publish installers to GitHub Releases.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: macos-latest
+            rid: osx-arm64
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Test
+        run: dotnet test --configuration Release
+
+      - name: Install vpk
+        run: dotnet tool install -g vpk
+
+      - name: Get version from tag
+        id: version
+        shell: bash
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      # Fetch the previous release so Velopack can build delta packages.
+      - name: Download previous release
+        shell: bash
+        continue-on-error: true
+        run: vpk download github --repoUrl "https://github.com/${{ github.repository }}" --token "${{ secrets.GITHUB_TOKEN }}" --outputDir "artifacts/releases/${{ matrix.rid }}"
+
+      # ---- Windows: code signing is optional until a certificate is configured. ----
+      - name: Pack (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          SIGN_PARAMS: ${{ secrets.WINDOWS_SIGN_PARAMS }}
+        run: ./build/pack-windows.ps1 -Version "${{ steps.version.outputs.value }}" -Rid "${{ matrix.rid }}"
+
+      # ---- macOS: import the Developer ID certificates and notary credentials, then pack. ----
+      - name: Import Apple certificates
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          if [[ -z "$APPLE_CERTIFICATE_P12" ]]; then echo "No Apple certificate configured; skipping."; exit 0; fi
+          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          echo "$APPLE_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productsign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          xcrun notarytool store-credentials deskmate-notary --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD"
+
+      - name: Pack (macOS)
+        if: runner.os == 'macOS'
+        env:
+          APPLE_APP_IDENTITY: ${{ secrets.APPLE_APP_IDENTITY }}
+          APPLE_INSTALL_IDENTITY: ${{ secrets.APPLE_INSTALL_IDENTITY }}
+          APPLE_NOTARY_PROFILE: ${{ secrets.APPLE_CERTIFICATE_P12 != '' && 'deskmate-notary' || '' }}
+        run: ./build/pack-macos.sh "${{ steps.version.outputs.value }}" "${{ matrix.rid }}"
+
+      - name: Upload to GitHub Releases
+        shell: bash
+        run: >
+          vpk upload github
+          --repoUrl "https://github.com/${{ github.repository }}"
+          --token "${{ secrets.GITHUB_TOKEN }}"
+          --outputDir "artifacts/releases/${{ matrix.rid }}"
+          --tag "${{ github.ref_name }}"
+          --releaseName "Deskmate ${{ steps.version.outputs.value }}"
+          --publish

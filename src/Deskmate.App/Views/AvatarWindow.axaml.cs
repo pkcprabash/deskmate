@@ -255,7 +255,8 @@ public partial class AvatarWindow : Window
         Sprite.Play(
             sheet, animation, pack.FrameSize.Width, pack.FrameSize.Height,
             renderWidth: pack.FrameSize.Width * viewModel.AvatarScale,
-            renderHeight: pack.FrameSize.Height * viewModel.AvatarScale);
+            renderHeight: pack.FrameSize.Height * viewModel.AvatarScale,
+            reducedMotion: viewModel.ReducedMotion);
     }
 
     private void OnAnimationCompleted(object? sender, EventArgs e)
@@ -360,6 +361,21 @@ public partial class AvatarWindow : Window
         else
         {
             viewModel?.NotifyClicked();
+        }
+    }
+
+    private void OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case Key.Enter or Key.Space:
+                QuickMenu.Open(RootSurface);
+                e.Handled = true;
+                break;
+            case Key.S when e.KeyModifiers == KeyModifiers.None:
+                OnSettingsClicked(this, new RoutedEventArgs());
+                e.Handled = true;
+                break;
         }
     }
 

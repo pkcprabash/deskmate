@@ -47,6 +47,7 @@ public static class AppHost
                 }
 
                 services.AddHostedService<StartupHostedService>();
+                services.AddHostedService<UpdateCheckService>();
             });
 
     [SupportedOSPlatform("windows")]

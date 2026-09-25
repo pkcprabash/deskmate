@@ -47,6 +47,7 @@ public class AvatarViewModel(
     public double? SavedPositionY { get; private set; }
     public LoadedAvatarPack? Pack { get; private set; }
     public double AvatarScale { get; private set; } = 1.0;
+    public bool ReducedMotion { get; private set; }
     public AvatarState CurrentState => _stateMachine.CurrentState;
     public bool IsPaused => _pausedUntil is { } until && DateTimeOffset.Now < until;
     public string BreakSuggestionMessage => MessagePhrasing.BreakSuggestion(_tone);
@@ -68,6 +69,7 @@ public class AvatarViewModel(
         SavedPositionY = settings.PositionY;
         Pack = LoadedAvatarPack.Load(avatarPackLoader, settings.AvatarPack);
         AvatarScale = settings.AvatarScale;
+        ReducedMotion = settings.ReducedMotion;
         _stateMachine.SleepAfter = settings.SleepAfter;
         _stateMachine.BreakAfter = settings.BreakAfter;
         _userName = settings.UserName;

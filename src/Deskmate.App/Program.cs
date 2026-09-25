@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Deskmate.App.Hosting;
 using Deskmate.App.SingleInstance;
 using Deskmate.Infrastructure.Data;
@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
+using Velopack;
 
 namespace Deskmate.App;
 
@@ -17,6 +18,9 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        // Must run first: handles installer/updater hooks (and exits) before anything else starts.
+        VelopackApp.Build().Run();
+
         using var singleInstanceGuard = SingleInstanceGuard.TryAcquire();
         if (!singleInstanceGuard.IsPrimaryInstance)
         {

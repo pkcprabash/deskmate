@@ -19,6 +19,7 @@ public class UserSettings
     public TimeSpan BreakAfter { get; set; } = TimeSpan.FromMinutes(50);
     public TimeOnly? QuietHoursStart { get; set; }
     public TimeOnly? QuietHoursEnd { get; set; }
+    public bool ReducedMotion { get; set; }
     public bool StartAtLogin { get; set; } = true;
     public DateOnly? LastGreetingDate { get; set; }
     public bool FirstRunCompleted { get; set; }

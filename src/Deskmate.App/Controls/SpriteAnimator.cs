@@ -28,9 +28,11 @@ public class SpriteAnimator : Control
     /// frameWidth/frameHeight describe the source sprite sheet's frame size (for cropping);
     /// renderWidth/renderHeight are the on-screen size, defaulting to the frame size when
     /// omitted. Kept separate so AvatarScale can resize the visual without touching how
-    /// frames are cropped from the sheet.
+    /// frames are cropped from the sheet. With reducedMotion, the first frame is held
+    /// still; one-shot animations still raise AnimationCompleted after their nominal
+    /// duration so the state machine keeps moving.
     /// </summary>
-    public void Play(Bitmap sheet, AvatarAnimation animation, int frameWidth, int frameHeight, double? renderWidth = null, double? renderHeight = null)
+    public void Play(Bitmap sheet, AvatarAnimation animation, int frameWidth, int frameHeight, double? renderWidth = null, double? renderHeight = null, bool reducedMotion = false)
     {
         Stop();
 
@@ -44,10 +46,23 @@ public class SpriteAnimator : Control
         Width = renderWidth ?? frameWidth;
         Height = renderHeight ?? frameHeight;
 
-        _timer = new DispatcherTimer
+        var frameInterval = TimeSpan.FromSeconds(1.0 / Math.Max(1, animation.Fps));
+
+        if (reducedMotion)
         {
-            Interval = TimeSpan.FromSeconds(1.0 / Math.Max(1, animation.Fps)),
-        };
+            InvalidateVisual();
+
+            if (!_loop)
+            {
+                _timer = new DispatcherTimer { Interval = frameInterval * _frameCount };
+                _timer.Tick += OnReducedMotionCompleted;
+                _timer.Start();
+            }
+
+            return;
+        }
+
+        _timer = new DispatcherTimer { Interval = frameInterval };
         _timer.Tick += OnTick;
         _timer.Start();
 
@@ -62,8 +77,15 @@ public class SpriteAnimator : Control
         }
 
         _timer.Tick -= OnTick;
+        _timer.Tick -= OnReducedMotionCompleted;
         _timer.Stop();
         _timer = null;
+    }
+
+    private void OnReducedMotionCompleted(object? sender, EventArgs e)
+    {
+        Stop();
+        AnimationCompleted?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnTick(object? sender, EventArgs e)

@@ -8,12 +8,12 @@
 
     <DockPanel Margin="16">
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
-            <Button Name="CancelButton" Content="Cancel" Click="OnCancelClicked" />
-            <Button Name="SaveButton" Content="Save" Click="OnSaveClicked" />
+            <Button Name="CancelButton" Content="_Cancel" IsCancel="True" Click="OnCancelClicked" />
+            <Button Name="SaveButton" Content="_Save" IsDefault="True" Click="OnSaveClicked" />
         </StackPanel>
 
         <TabControl>
-            <TabItem Header="Avatar">
+            <TabItem Header="_Avatar">
                 <StackPanel Spacing="10" Margin="8">
                     <StackPanel Spacing="4">
                         <TextBlock Text="Avatar pack" />
@@ -25,12 +25,12 @@
                     </StackPanel>
                     <StackPanel Spacing="4">
                         <TextBlock Text="Size" />
-                        <Slider Name="AvatarScaleSlider" Minimum="0.5" Maximum="2.0" TickFrequency="0.1" />
+                        <Slider Name="AvatarScaleSlider" AutomationProperties.Name="Avatar size" Minimum="0.5" Maximum="2.0" TickFrequency="0.1" />
                     </StackPanel>
                 </StackPanel>
             </TabItem>
 
-            <TabItem Header="About me">
+            <TabItem Header="A_bout me">
                 <StackPanel Spacing="10" Margin="8">
                     <StackPanel Spacing="4">
                         <TextBlock Text="Your name" />
@@ -57,7 +57,7 @@
                 </StackPanel>
             </TabItem>
 
-            <TabItem Header="Behavior">
+            <TabItem Header="Be_havior">
                 <StackPanel Spacing="10" Margin="8">
                     <StackPanel Spacing="4">
                         <TextBlock Text="Fall asleep after (minutes idle)" />
@@ -68,6 +68,7 @@
                         <NumericUpDown Name="BreakAfterMinutes" Minimum="5" Maximum="180" Increment="5" FormatString="0" />
                     </StackPanel>
                     <CheckBox Name="StartAtLoginCheckBox" Content="Start Deskmate at login" />
+                    <CheckBox Name="ReducedMotionCheckBox" Content="Reduce motion (hold the avatar still instead of animating)" />
                     <CheckBox Name="QuietHoursEnabledCheckBox" Content="Quiet hours (pause break suggestions and reminder alerts)" />
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <StackPanel Spacing="4">
@@ -82,7 +83,7 @@
                 </StackPanel>
             </TabItem>
 
-            <TabItem Header="Reminders">
+            <TabItem Header="_Reminders">
                 <DockPanel Margin="8">
                     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
                         <Button Name="AddReminderButton" Content="Add" Click="OnAddReminderClicked" />
@@ -94,7 +95,7 @@
                 </DockPanel>
             </TabItem>
 
-            <TabItem Header="Privacy">
+            <TabItem Header="_Privacy">
                 <StackPanel Margin="8" Spacing="8">
                     <TextBlock TextWrapping="Wrap"
                                Text="Deskmate counts your keystrokes and notes when the most recent one happened, so it knows when you're typing or away. It never reads, stores, or transmits which keys you press. Everything — your settings and reminders — stays on this computer; nothing is sent anywhere." />

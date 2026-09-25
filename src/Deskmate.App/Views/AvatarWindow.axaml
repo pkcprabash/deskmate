@@ -12,7 +12,9 @@
         Background="Transparent"
         Topmost="True"
         ShowInTaskbar="False"
-        WindowStartupLocation="Manual">
+        WindowStartupLocation="Manual"
+        KeyDown="OnKeyDown"
+        AutomationProperties.Name="Deskmate avatar. Press Enter for the menu or S for settings.">
 
     <Grid Name="RootSurface"
           Background="Transparent"
@@ -43,6 +45,7 @@
                 VerticalAlignment="Top"
                 Margin="6"
                 CornerRadius="12"
+                AutomationProperties.Name="Settings"
                 Click="OnSettingsClicked" />
     </Grid>
 
