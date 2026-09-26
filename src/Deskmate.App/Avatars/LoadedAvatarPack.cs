@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using Avalonia.Media.Imaging;
 using Deskmate.Core.Models;
@@ -30,6 +32,23 @@ public class LoadedAvatarPack
         var pack = loader.Load(packName);
         var directory = Path.Combine(AvatarPackLoader.GetPacksDirectory(), packName);
         return new LoadedAvatarPack(pack, directory);
+    }
+
+    /// <summary>
+    /// Loads the named pack, or the built-in fallback if it is missing or invalid, so a bad
+    /// or deleted pack never stops the avatar from appearing.
+    /// </summary>
+    public static LoadedAvatarPack LoadWithFallback(AvatarPackLoader loader, string packName)
+    {
+        try
+        {
+            return Load(loader, packName);
+        }
+        catch (InvalidAvatarPackException ex)
+        {
+            Trace.TraceWarning($"{ex.Message}{Environment.NewLine}Falling back to '{AvatarPackLoader.FallbackPackName}'.");
+            return Load(loader, AvatarPackLoader.FallbackPackName);
+        }
     }
 
     public bool TryGetAnimation(string name, out AvatarAnimation animation, out Bitmap sheet)

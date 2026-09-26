@@ -1,3 +1,4 @@
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Deskmate.Infrastructure.Avatars;
@@ -21,8 +22,22 @@ public sealed class StartupHostedService(
     {
         logger.LogInformation("Deskmate host started.");
 
-        var pack = avatarPackLoader.Load("mint");
-        logger.LogInformation("Loaded avatar pack '{PackName}' with {AnimationCount} animation(s).", pack.Name, pack.Animations.Count);
+        var packsDirectory = AvatarPackLoader.GetPacksDirectory();
+        if (Directory.Exists(packsDirectory))
+        {
+            foreach (var packPath in Directory.GetDirectories(packsDirectory))
+            {
+                var packName = Path.GetFileName(packPath);
+                if (avatarPackLoader.TryLoad(packName, out var pack, out var error))
+                {
+                    logger.LogInformation("Loaded avatar pack '{PackName}' with {AnimationCount} animation(s).", pack!.Name, pack.Animations.Count);
+                }
+                else
+                {
+                    logger.LogWarning("Skipping avatar pack '{PackName}'. {Problems}", packName, error!.Message);
+                }
+            }
+        }
 
         await notificationService.InitializeAsync();
     }

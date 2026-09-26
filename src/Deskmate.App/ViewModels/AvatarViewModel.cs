@@ -77,7 +77,7 @@ public class AvatarViewModel(
         _settingsId = settings.Id;
         SavedPositionX = settings.PositionX;
         SavedPositionY = settings.PositionY;
-        Pack = LoadedAvatarPack.Load(avatarPackLoader, settings.AvatarPack);
+        Pack = LoadedAvatarPack.LoadWithFallback(avatarPackLoader, settings.AvatarPack);
         AvatarScale = settings.AvatarScale;
         ReducedMotion = settings.ReducedMotion;
         _stateMachine.SleepAfter = settings.SleepAfter;

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Avatar packs are validated on load with clear, complete error messages; broken packs are hidden from the picker and a bad selected pack falls back to `mint`.
+- New built-in `slate` avatar pack, plus a guide to making your own packs (AVATAR_PACKS.md).
 - Pomodoro focus sessions: start/skip/stop from the tray, configurable lengths, avatar and tone-aware messages, live time-left tray tooltip.
 
 ## 1.0.0

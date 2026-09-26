@@ -14,6 +14,11 @@ sessions. The tray tooltip shows the time left. Lengths are set in Settings > Fo
 session runs, the regular "time for a break?" nudge is turned off. Messages go to a native
 notification if the avatar is hidden, and stay silent during quiet hours or pause.
 
+## Avatar packs
+
+Deskmate ships with two looks (`mint` and `slate`) and supports your own. See
+[AVATAR_PACKS.md](AVATAR_PACKS.md) for the sprite-sheet format and a guide to making one.
+
 ## Install
 
 Download the latest installer for Windows or macOS from

@@ -27,27 +27,13 @@ public partial class FirstRunWindow : Window
 
     private void OnOpened(object? sender, EventArgs e)
     {
-        foreach (var packName in ListAvailableAvatarPacks())
+        foreach (var packName in new AvatarPackLoader().ListValidPacks())
         {
             AvatarPackComboBox.Items.Add(packName);
         }
 
         AvatarPackComboBox.SelectedItem = DefaultAvatarPack;
         AvatarNameTextBox.Text = "Pixel";
-    }
-
-    private static string[] ListAvailableAvatarPacks()
-    {
-        var packsDirectory = AvatarPackLoader.GetPacksDirectory();
-        if (!Directory.Exists(packsDirectory))
-        {
-            return [];
-        }
-
-        return Directory.GetDirectories(packsDirectory)
-            .Select(Path.GetFileName)
-            .OfType<string>()
-            .ToArray();
     }
 
     private async void OnGetStartedClicked(object? sender, RoutedEventArgs e)

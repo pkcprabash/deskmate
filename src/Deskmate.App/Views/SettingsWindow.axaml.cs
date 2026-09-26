@@ -37,7 +37,7 @@ public partial class SettingsWindow : Window
             ToneComboBox.Items.Add(toneName);
         }
 
-        foreach (var packName in ListAvailableAvatarPacks())
+        foreach (var packName in new AvatarPackLoader().ListValidPacks())
         {
             AvatarPackComboBox.Items.Add(packName);
         }
@@ -122,20 +122,6 @@ public partial class SettingsWindow : Window
         }
 
         await ReminderService.MarkNextOccurrenceCompletedAsync(_reminders[index].Id);
-    }
-
-    private static string[] ListAvailableAvatarPacks()
-    {
-        var packsDirectory = AvatarPackLoader.GetPacksDirectory();
-        if (!Directory.Exists(packsDirectory))
-        {
-            return [];
-        }
-
-        return Directory.GetDirectories(packsDirectory)
-            .Select(Path.GetFileName)
-            .OfType<string>()
-            .ToArray();
     }
 
     private async void OnSaveClicked(object? sender, RoutedEventArgs e)
