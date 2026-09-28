@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using DesktopNotifications;
 using DesktopNotifications.Apple;
+using DesktopNotifications.FreeDesktop;
 using DesktopNotifications.Windows;
 using Microsoft.Extensions.Logging;
 
@@ -68,6 +69,11 @@ public sealed class NotificationService : IDisposable
         if (OperatingSystem.IsMacOS())
         {
             return new AppleNotificationManager();
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            return new FreeDesktopNotificationManager();
         }
 
         return null;

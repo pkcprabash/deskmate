@@ -45,6 +45,12 @@ public static class AppHost
                     services.AddSingleton<IStartupRegistration, MacStartupRegistration>();
                     services.AddSingleton<IFullScreenDetector, MacFullScreenDetector>();
                 }
+                else if (OperatingSystem.IsLinux())
+                {
+                    AddLinuxSessionEventsMonitor(services);
+                    services.AddSingleton<IStartupRegistration, LinuxStartupRegistration>();
+                    services.AddSingleton<IFullScreenDetector, LinuxFullScreenDetector>();
+                }
 
                 services.AddHostedService<StartupHostedService>();
                 services.AddHostedService<UpdateCheckService>();
@@ -56,5 +62,13 @@ public static class AppHost
         services.AddSingleton<WindowsSessionEventsMonitor>();
         services.AddSingleton<ISessionEventsMonitor>(sp => sp.GetRequiredService<WindowsSessionEventsMonitor>());
         services.AddHostedService(sp => sp.GetRequiredService<WindowsSessionEventsMonitor>());
+    }
+
+    [SupportedOSPlatform("linux")]
+    private static void AddLinuxSessionEventsMonitor(IServiceCollection services)
+    {
+        services.AddSingleton<LinuxSessionEventsMonitor>();
+        services.AddSingleton<ISessionEventsMonitor>(sp => sp.GetRequiredService<LinuxSessionEventsMonitor>());
+        services.AddHostedService(sp => sp.GetRequiredService<LinuxSessionEventsMonitor>());
     }
 }

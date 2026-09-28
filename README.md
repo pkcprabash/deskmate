@@ -14,6 +14,19 @@ sessions. The tray tooltip shows the time left. Lengths are set in Settings > Fo
 session runs, the regular "time for a break?" nudge is turned off. Messages go to a native
 notification if the avatar is hidden, and stay silent during quiet hours or pause.
 
+## Platforms
+
+Deskmate runs on Windows, macOS, and Linux (X11 or XWayland). A few OS-specific behaviors:
+
+| Behavior | Windows | macOS | Linux |
+| --- | --- | --- | --- |
+| Start at login | Registry Run key | LaunchAgent | XDG autostart (`~/.config/autostart`) |
+| Wake on unlock/resume | `SystemEvents` | `NSWorkspace` notifications | systemd-logind `PrepareForSleep` (sleep/wake only; no single cross-desktop lock/unlock signal) |
+| Full-screen auto-hide | Foreground window vs. monitor bounds | `CGWindowListCopyWindowInfo` | X11 EWMH (`_NET_ACTIVE_WINDOW` / `_NET_WM_STATE_FULLSCREEN`); no-ops on pure Wayland (no X server) |
+| Native notifications | `DesktopNotifications.Windows` | `DesktopNotifications.Apple` | `DesktopNotifications.FreeDesktop` (org.freedesktop.Notifications over D-Bus) |
+
+Linux installers aren'"'"'t built yet (see `build/pack-*`); run from source with `dotnet run --project src/Deskmate.App` in the meantime.
+
 ## Avatar packs
 
 Deskmate ships with two looks (`mint` and `slate`) and supports your own. See
