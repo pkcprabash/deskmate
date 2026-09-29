@@ -14,6 +14,15 @@ sessions. The tray tooltip shows the time left. Lengths are set in Settings > Fo
 session runs, the regular "time for a break?" nudge is turned off. Messages go to a native
 notification if the avatar is hidden, and stay silent during quiet hours or pause.
 
+## AI messages (optional)
+
+Settings > AI messages lets Deskmate rewrite its greetings, break nudges, and focus-session
+lines with Claude, using your own Anthropic API key. Off by default. The key and model choice
+are stored only in Deskmate's local database and are sent to no one but api.anthropic.com;
+the default model is Claude Haiku 4.5, chosen for speed and cost on these short, frequent
+messages, and is configurable. If the call is slow, fails, or is disabled, Deskmate falls back
+to its built-in phrasing — you'"'"'ll never see a blank message.
+
 ## Platforms
 
 Deskmate runs on Windows, macOS, and Linux (X11 or XWayland). A few OS-specific behaviors:

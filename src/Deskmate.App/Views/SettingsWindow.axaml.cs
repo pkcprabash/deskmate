@@ -61,6 +61,9 @@ public partial class SettingsWindow : Window
         PomodoroShortBreakMinutes.Value = (decimal)settings.PomodoroShortBreak.TotalMinutes;
         PomodoroLongBreakMinutes.Value = (decimal)settings.PomodoroLongBreak.TotalMinutes;
         PomodoroSessionsBeforeLongBreak.Value = settings.PomodoroSessionsBeforeLongBreak;
+        AiMessagesEnabledCheckBox.IsChecked = settings.AiMessagesEnabled;
+        AiApiKeyTextBox.Text = settings.AiApiKey;
+        AiModelTextBox.Text = settings.AiModel;
         QuietHoursEnabledCheckBox.IsChecked = settings.QuietHoursStart is not null && settings.QuietHoursEnd is not null;
         QuietHoursStartPicker.SelectedTime = (settings.QuietHoursStart ?? new TimeOnly(22, 0)).ToTimeSpan();
         QuietHoursEndPicker.SelectedTime = (settings.QuietHoursEnd ?? new TimeOnly(7, 0)).ToTimeSpan();
@@ -159,6 +162,9 @@ public partial class SettingsWindow : Window
             settings.PomodoroShortBreak = TimeSpan.FromMinutes((double)(PomodoroShortBreakMinutes.Value ?? 5));
             settings.PomodoroLongBreak = TimeSpan.FromMinutes((double)(PomodoroLongBreakMinutes.Value ?? 15));
             settings.PomodoroSessionsBeforeLongBreak = (int)(PomodoroSessionsBeforeLongBreak.Value ?? 4);
+            settings.AiMessagesEnabled = AiMessagesEnabledCheckBox.IsChecked ?? false;
+            settings.AiApiKey = AiApiKeyTextBox.Text ?? "";
+            settings.AiModel = string.IsNullOrWhiteSpace(AiModelTextBox.Text) ? "claude-haiku-4-5" : AiModelTextBox.Text;
 
             if (QuietHoursEnabledCheckBox.IsChecked == true
                 && QuietHoursStartPicker.SelectedTime is { } quietStart

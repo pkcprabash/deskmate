@@ -77,4 +77,18 @@ public class GreetingService
         < 18 => "Good afternoon",
         _ => "Good evening",
     };
+
+    /// <summary>"morning"/"afternoon"/"evening" and weekend-ness, for callers (like AI message
+    /// prompts) that want the same facts this class uses without duplicating the hour cutoffs.</summary>
+    public static (string TimeOfDay, bool IsWeekend) DescribeNow(DateTimeOffset now)
+    {
+        var timeOfDay = now.Hour switch
+        {
+            < 12 => "morning",
+            < 18 => "afternoon",
+            _ => "evening",
+        };
+
+        return (timeOfDay, now.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday);
+    }
 }

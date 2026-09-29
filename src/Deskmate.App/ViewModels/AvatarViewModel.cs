@@ -7,6 +7,7 @@ using Deskmate.App.Avatars;
 using Deskmate.Core;
 using Deskmate.Core.Models;
 using Deskmate.Infrastructure.Activity;
+using Deskmate.Infrastructure.AiMessages;
 using Deskmate.Infrastructure.Avatars;
 using Deskmate.Infrastructure.Data;
 using Deskmate.Infrastructure.Notifications;
@@ -21,7 +22,8 @@ public class AvatarViewModel(
     ISessionEventsMonitor sessionEventsMonitor,
     ReminderScheduler reminderScheduler,
     ReminderService reminderService,
-    NotificationService notificationService) : ViewModelBase
+    NotificationService notificationService,
+    IAiMessageGenerator aiMessageGenerator) : ViewModelBase
 {
     private static readonly TimeSpan TickInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan SnoozeDuration = TimeSpan.FromMinutes(10);
@@ -44,6 +46,11 @@ public class AvatarViewModel(
     private DateTimeOffset? _pausedUntil;
     private (Reminder Reminder, ReminderOccurrence Occurrence)? _activeReminderAlert;
     private string _lastPomodoroStatus = "";
+    private string _avatarName = "";
+    private string _currentFocus = "";
+    private bool _aiEnabled;
+    private string _aiApiKey = "";
+    private string _aiModel = "";
 
     public double? SavedPositionX { get; private set; }
     public double? SavedPositionY { get; private set; }
@@ -56,13 +63,16 @@ public class AvatarViewModel(
     public bool IsAvatarHidden { get; set; }
     public AvatarState CurrentState => _stateMachine.CurrentState;
     public bool IsPaused => _pausedUntil is { } until && DateTimeOffset.Now < until;
-    public string BreakSuggestionMessage => MessagePhrasing.BreakSuggestion(_tone);
+
 
     public event Action<AvatarState>? StateChanged;
     public event Action<string>? GreetingReady;
     public event Action<string>? ReminderAlertReady;
     public event Action<bool>? PausedChanged;
     public event Action<string>? PomodoroMessageReady;
+
+    /// <summary>A break suggestion's message, resolved (possibly by AI) and ready to show with Sure/Later buttons.</summary>
+    public event Action<string>? BreakSuggestionReady;
 
     /// <summary>Raised when the tray tooltip text should change, e.g. "Focus 12 min left" (empty when stopped).</summary>
     public event Action<string>? PomodoroStatusChanged;
@@ -87,6 +97,11 @@ public class AvatarViewModel(
         _lastGreetingDate = settings.LastGreetingDate;
         _quietHoursStart = settings.QuietHoursStart;
         _quietHoursEnd = settings.QuietHoursEnd;
+        _avatarName = settings.AvatarName;
+        _currentFocus = settings.CurrentFocus;
+        _aiEnabled = settings.AiMessagesEnabled;
+        _aiApiKey = settings.AiApiKey;
+        _aiModel = settings.AiModel;
         _pomodoro.Settings = new PomodoroSettings(
             settings.PomodoroFocus, settings.PomodoroShortBreak, settings.PomodoroLongBreak, settings.PomodoroSessionsBeforeLongBreak);
 
@@ -178,7 +193,7 @@ public class AvatarViewModel(
 
         _pomodoro.Stop();
         _workSessionStartedAt = DateTimeOffset.UtcNow;
-        Announce(MessagePhrasing.PomodoroStopped(_tone));
+        _ = AnnounceAsync(AiMessageKind.PomodoroStopped, MessagePhrasing.PomodoroStopped(_tone), m => PomodoroMessageReady?.Invoke(m));
         RefreshPomodoroStatus();
     }
 
@@ -203,21 +218,54 @@ public class AvatarViewModel(
         switch (_pomodoro.Phase)
         {
             case PomodoroPhase.Focus:
-                Announce(MessagePhrasing.PomodoroFocusStarted(_tone, (int)settings.FocusDuration.TotalMinutes));
+                var focusMinutes = (int)settings.FocusDuration.TotalMinutes;
+                _ = AnnounceAsync(
+                    AiMessageKind.PomodoroFocusStarted, MessagePhrasing.PomodoroFocusStarted(_tone, focusMinutes),
+                    m => PomodoroMessageReady?.Invoke(m), minutes: focusMinutes);
                 break;
             case PomodoroPhase.ShortBreak:
             case PomodoroPhase.LongBreak:
                 var isLong = _pomodoro.Phase == PomodoroPhase.LongBreak;
                 var duration = isLong ? settings.LongBreakDuration : settings.ShortBreakDuration;
                 _workSessionStartedAt = DateTimeOffset.UtcNow;
-                Announce(MessagePhrasing.PomodoroBreakStarted(_tone, isLong, (int)duration.TotalMinutes));
+                // The coffee-sip animation fires immediately; the (possibly AI-rewritten) bubble text can lag a beat behind it.
                 Transition(AvatarInput.PomodoroBreakStarted);
+                _ = AnnounceAsync(
+                    AiMessageKind.PomodoroBreakStarted, MessagePhrasing.PomodoroBreakStarted(_tone, isLong, (int)duration.TotalMinutes),
+                    m => PomodoroMessageReady?.Invoke(m), minutes: (int)duration.TotalMinutes, isLongBreak: isLong);
                 break;
         }
     }
 
+    /// <summary>Resolves the message (AI if configured, the static fallback otherwise) and then announces it.</summary>
+    private async Task AnnounceAsync(AiMessageKind kind, string fallback, Action<string> onVisible, int minutes = 0, bool isLongBreak = false, bool isFullGreeting = false)
+    {
+        var message = await ResolveMessageAsync(kind, fallback, isFullGreeting, minutes, isLongBreak);
+        Announce(message, onVisible);
+    }
+
+    /// <summary>
+    /// Asks the configured AI message generator to rewrite <paramref name="fallback"/> for this
+    /// moment; returns the fallback unchanged if AI messages are off, no key is set, or the call
+    /// fails (the generator's contract is to return null rather than throw in that case).
+    /// </summary>
+    private async Task<string> ResolveMessageAsync(AiMessageKind kind, string fallback, bool isFullGreeting = false, int minutes = 0, bool isLongBreak = false)
+    {
+        if (!_aiEnabled || string.IsNullOrWhiteSpace(_aiApiKey))
+        {
+            return fallback;
+        }
+
+        var (timeOfDay, isWeekend) = GreetingService.DescribeNow(DateTimeOffset.Now);
+        var request = new AiMessageRequest(
+            kind, fallback, _avatarName, _userName, _tone, _currentFocus, timeOfDay, isWeekend, isFullGreeting, minutes, isLongBreak);
+
+        var generated = await aiMessageGenerator.GenerateAsync(request, _aiApiKey, _aiModel);
+        return generated ?? fallback;
+    }
+
     /// <summary>Speech bubble when the avatar is visible, native notification when it isn't. Silent during quiet hours or pause.</summary>
-    private void Announce(string message)
+    private void Announce(string message, Action<string> onVisible)
     {
         if (IsPaused || QuietHours.IsWithin(_quietHoursStart, _quietHoursEnd, TimeOnly.FromDateTime(DateTime.Now)))
         {
@@ -230,7 +278,7 @@ public class AvatarViewModel(
         }
         else
         {
-            PomodoroMessageReady?.Invoke(message);
+            onVisible(message);
         }
     }
 
@@ -314,7 +362,14 @@ public class AvatarViewModel(
             _ = settingsService.UpdateAsync(_settingsId, s => s.LastGreetingDate = today);
         }
 
-        GreetingReady?.Invoke(_greetingService.BuildMessage(kind, _userName, now, _tone));
+        var fallback = _greetingService.BuildMessage(kind, _userName, now, _tone);
+        _ = AnnounceGreetingAsync(fallback, isFullGreeting: kind == GreetingKind.Full);
+    }
+
+    private async Task AnnounceGreetingAsync(string fallback, bool isFullGreeting)
+    {
+        var message = await ResolveMessageAsync(AiMessageKind.Greeting, fallback, isFullGreeting);
+        GreetingReady?.Invoke(message);
     }
 
     /// <summary>
@@ -369,6 +424,11 @@ public class AvatarViewModel(
         if (_stateMachine.CurrentState == AvatarState.Sleeping)
         {
             _workSessionStartedAt = DateTimeOffset.UtcNow;
+        }
+
+        if (_stateMachine.CurrentState == AvatarState.SuggestingBreak)
+        {
+            _ = AnnounceAsync(AiMessageKind.BreakSuggestion, MessagePhrasing.BreakSuggestion(_tone), m => BreakSuggestionReady?.Invoke(m));
         }
 
         StateChanged?.Invoke(_stateMachine.CurrentState);

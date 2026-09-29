@@ -6,6 +6,7 @@ using Avalonia.Markup.Xaml;
 using Deskmate.App.ViewModels;
 using Deskmate.App.Views;
 using Deskmate.Infrastructure.Activity;
+using Deskmate.Infrastructure.AiMessages;
 using Deskmate.Infrastructure.Avatars;
 using Deskmate.Infrastructure.Data;
 using Deskmate.Infrastructure.Display;
@@ -76,6 +77,7 @@ public partial class App : Application
         var reminderService = Host!.Services.GetRequiredService<ReminderService>();
         var notificationService = Host!.Services.GetRequiredService<NotificationService>();
         var fullScreenDetector = Host!.Services.GetRequiredService<IFullScreenDetector>();
+        var aiMessageGenerator = Host!.Services.GetRequiredService<IAiMessageGenerator>();
 
         var window = new AvatarWindow
         {
@@ -85,7 +87,7 @@ public partial class App : Application
             FullScreenDetector = fullScreenDetector,
             DataContext = new AvatarViewModel(
                 settingsService, avatarPackLoader, idleMonitor, sessionEventsMonitor,
-                reminderScheduler, reminderService, notificationService),
+                reminderScheduler, reminderService, notificationService, aiMessageGenerator),
         };
 
         window.PomodoroStatusChanged += OnPomodoroStatusChanged;

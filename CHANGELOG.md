@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Optional AI-generated messages (Settings > AI messages): rewrites greetings, break suggestions, and Pomodoro messages via the Anthropic API using your own key, falling back to the built-in phrasing when disabled, unconfigured, or on any failure/timeout.
 - Linux support: start-at-login (XDG autostart), sleep/wake detection (systemd-logind), full-screen auto-hide (X11 EWMH), and native notifications (org.freedesktop.Notifications). CI now builds and tests on Ubuntu too.
 - Avatar packs are validated on load with clear, complete error messages; broken packs are hidden from the picker and a bad selected pack falls back to `mint`.
 - New built-in `slate` avatar pack, plus a guide to making your own packs (AVATAR_PACKS.md).

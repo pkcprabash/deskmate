@@ -60,6 +60,7 @@ public partial class AvatarWindow : Window
         Position = ResolveStartupPosition(viewModel);
 
         viewModel.StateChanged += OnStateChanged;
+        viewModel.BreakSuggestionReady += OnBreakSuggestionReady;
         viewModel.GreetingReady += OnGreetingReady;
         viewModel.ReminderAlertReady += OnReminderAlertReady;
         viewModel.PausedChanged += OnPausedChanged;
@@ -157,22 +158,19 @@ public partial class AvatarWindow : Window
         };
 
         PlayAnimation(animationName);
-
-        if (state == AvatarState.SuggestingBreak)
-        {
-            ShowBreakBubble();
-        }
     }
 
-    private void ShowBreakBubble()
+    /// <summary>The break-suggestion message, resolved (possibly by AI) asynchronously by the view model.</summary>
+    private void OnBreakSuggestionReady(string message)
     {
         if (DataContext is not AvatarViewModel viewModel)
         {
             return;
         }
 
+        _breakBubble?.Close();
         _breakBubble = CreateBubble(
-            viewModel.BreakSuggestionMessage,
+            message,
             "Sure",
             "Later",
             onPrimaryClicked: viewModel.NotifyBreakAccepted,

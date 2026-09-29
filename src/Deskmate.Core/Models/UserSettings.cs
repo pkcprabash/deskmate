@@ -24,6 +24,10 @@ public class UserSettings
     public TimeSpan PomodoroShortBreak { get; set; } = TimeSpan.FromMinutes(5);
     public TimeSpan PomodoroLongBreak { get; set; } = TimeSpan.FromMinutes(15);
     public int PomodoroSessionsBeforeLongBreak { get; set; } = 4;
+    public bool AiMessagesEnabled { get; set; }
+    /// <summary>Your own Anthropic API key. Stored locally only, in this app's SQLite database; never sent anywhere but api.anthropic.com.</summary>
+    public string AiApiKey { get; set; } = "";
+    public string AiModel { get; set; } = "claude-haiku-4-5";
     public bool StartAtLogin { get; set; } = true;
     public DateOnly? LastGreetingDate { get; set; }
     public bool FirstRunCompleted { get; set; }

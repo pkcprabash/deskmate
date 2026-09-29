@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.Versioning;
 using Deskmate.Infrastructure.Activity;
+using Deskmate.Infrastructure.AiMessages;
 using Deskmate.Infrastructure.Avatars;
 using Deskmate.Infrastructure.Data;
 using Deskmate.Infrastructure.Display;
@@ -28,6 +29,7 @@ public static class AppHost
                 services.AddHostedService(sp => sp.GetRequiredService<KeyboardActivityMonitor>());
                 services.AddSingleton<IdleMonitor>();
                 services.AddSingleton<NotificationService>();
+                services.AddSingleton<IAiMessageGenerator, AnthropicMessageGenerator>();
                 services.AddSingleton<ReminderScheduler>();
                 services.AddHostedService(sp => sp.GetRequiredService<ReminderScheduler>());
 
