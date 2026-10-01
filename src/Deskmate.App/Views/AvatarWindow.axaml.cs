@@ -7,6 +7,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Deskmate.App.ViewModels;
 using Deskmate.Core;
+using Deskmate.Infrastructure.Calendar;
 using Deskmate.Infrastructure.Data;
 using Deskmate.Infrastructure.Display;
 using Deskmate.Infrastructure.Startup;
@@ -25,6 +26,7 @@ public partial class AvatarWindow : Window
     public required SettingsService SettingsService { get; init; }
     public required IStartupRegistration StartupRegistration { get; init; }
     public required ReminderService ReminderService { get; init; }
+    public required CalendarSyncService CalendarSyncService { get; init; }
     public required IFullScreenDetector FullScreenDetector { get; init; }
 
     private bool _pointerDown;
@@ -430,6 +432,7 @@ public partial class AvatarWindow : Window
             SettingsService = SettingsService,
             StartupRegistration = StartupRegistration,
             ReminderService = ReminderService,
+            CalendarSyncService = CalendarSyncService,
         };
         settingsWindow.SettingsSaved += OnSettingsSaved;
         await settingsWindow.ShowDialog(this);

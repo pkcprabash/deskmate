@@ -7,6 +7,7 @@ using Deskmate.App.ViewModels;
 using Deskmate.App.Views;
 using Deskmate.Infrastructure.Activity;
 using Deskmate.Infrastructure.AiMessages;
+using Deskmate.Infrastructure.Calendar;
 using Deskmate.Infrastructure.Avatars;
 using Deskmate.Infrastructure.Data;
 using Deskmate.Infrastructure.Display;
@@ -78,12 +79,14 @@ public partial class App : Application
         var notificationService = Host!.Services.GetRequiredService<NotificationService>();
         var fullScreenDetector = Host!.Services.GetRequiredService<IFullScreenDetector>();
         var aiMessageGenerator = Host!.Services.GetRequiredService<IAiMessageGenerator>();
+        var calendarSyncService = Host!.Services.GetRequiredService<CalendarSyncService>();
 
         var window = new AvatarWindow
         {
             SettingsService = settingsService,
             StartupRegistration = startupRegistration,
             ReminderService = reminderService,
+            CalendarSyncService = calendarSyncService,
             FullScreenDetector = fullScreenDetector,
             DataContext = new AvatarViewModel(
                 settingsService, avatarPackLoader, idleMonitor, sessionEventsMonitor,

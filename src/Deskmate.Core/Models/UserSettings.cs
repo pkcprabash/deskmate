@@ -28,6 +28,10 @@ public class UserSettings
     /// <summary>Your own Anthropic API key. Stored locally only, in this app's SQLite database; never sent anywhere but api.anthropic.com.</summary>
     public string AiApiKey { get; set; } = "";
     public string AiModel { get; set; } = "claude-haiku-4-5";
+    /// <summary>A calendar's private "secret address" / iCal subscription URL (Google, Outlook, Apple all offer one). Empty disables sync.</summary>
+    public string CalendarIcsUrl { get; set; } = "";
+    public DateTimeOffset? LastCalendarSyncAt { get; set; }
+    public string? LastCalendarSyncError { get; set; }
     public bool StartAtLogin { get; set; } = true;
     public DateOnly? LastGreetingDate { get; set; }
     public bool FirstRunCompleted { get; set; }

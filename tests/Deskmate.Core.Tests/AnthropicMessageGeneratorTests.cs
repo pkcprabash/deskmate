@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Deskmate.Core.Models;
 using Deskmate.Infrastructure.AiMessages;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -94,11 +95,11 @@ public class AnthropicMessageGeneratorTests
     }
 
     [Fact]
-    public void GenerateAsync_NoApiKey_ReturnsNullWithoutCallingTheNetwork()
+    public async Task GenerateAsync_NoApiKey_ReturnsNullWithoutCallingTheNetwork()
     {
         var sut = new AnthropicMessageGenerator(NullLogger<AnthropicMessageGenerator>.Instance);
 
-        var result = sut.GenerateAsync(Request(AiMessageKind.Greeting), apiKey: null, model: "claude-haiku-4-5").GetAwaiter().GetResult();
+        var result = await sut.GenerateAsync(Request(AiMessageKind.Greeting), apiKey: null, model: "claude-haiku-4-5");
 
         Assert.Null(result);
     }

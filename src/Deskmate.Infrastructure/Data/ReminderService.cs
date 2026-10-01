@@ -144,4 +144,63 @@ public class ReminderService(IDbContextFactory<DeskmateDbContext> dbContextFacto
         occurrence.SnoozedUntil = until;
         await db.SaveChangesAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Applies a calendar feed's events against the reminders a previous sync created (see
+    /// <see cref="CalendarSyncPlanner"/>): adds new events, updates ones whose title/date/time
+    /// changed, and removes ones no longer in the feed (dated on or after
+    /// <paramref name="windowStart"/>). Manually-created reminders are never touched.
+    /// </summary>
+    public async Task<CalendarSyncResult> ApplyCalendarSyncAsync(
+        IReadOnlyList<CalendarEvent> incoming, DateOnly windowStart, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        var existing = await db.Reminders
+            .Where(r => r.Source == ReminderSource.IcsSubscription && r.ExternalId != null)
+            .Select(r => new SyncedReminderSnapshot(r.Id, r.ExternalId!, r.Title, r.Date, r.Time))
+            .ToListAsync(cancellationToken);
+
+        var plan = CalendarSyncPlanner.Plan(existing, incoming, windowStart);
+
+        foreach (var calendarEvent in plan.ToAdd)
+        {
+            db.Reminders.Add(new Reminder
+            {
+                Title = calendarEvent.Title,
+                Date = calendarEvent.Date,
+                Time = calendarEvent.Time,
+                Source = ReminderSource.IcsSubscription,
+                ExternalId = calendarEvent.ExternalId,
+            });
+        }
+
+        if (plan.ToUpdate.Count > 0)
+        {
+            var updateIds = plan.ToUpdate.Select(u => u.ReminderId).ToList();
+            var toUpdate = await db.Reminders.Where(r => updateIds.Contains(r.Id)).ToDictionaryAsync(r => r.Id, cancellationToken);
+
+            foreach (var (reminderId, calendarEvent) in plan.ToUpdate)
+            {
+                if (!toUpdate.TryGetValue(reminderId, out var reminder))
+                {
+                    continue;
+                }
+
+                reminder.Title = calendarEvent.Title;
+                reminder.Date = calendarEvent.Date;
+                reminder.Time = calendarEvent.Time;
+            }
+        }
+
+        if (plan.ToRemoveReminderIds.Count > 0)
+        {
+            await db.ReminderOccurrences.Where(o => plan.ToRemoveReminderIds.Contains(o.ReminderId)).ExecuteDeleteAsync(cancellationToken);
+            await db.Reminders.Where(r => plan.ToRemoveReminderIds.Contains(r.Id)).ExecuteDeleteAsync(cancellationToken);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return new CalendarSyncResult(plan.ToAdd.Count, plan.ToUpdate.Count, plan.ToRemoveReminderIds.Count);
+    }
 }

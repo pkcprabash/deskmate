@@ -14,4 +14,11 @@ public class Reminder
     public bool AlertOnDay { get; set; } = true;
     public TimeSpan? AlertBefore { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Manual (the default) or imported from a calendar subscription — see <see cref="ExternalId"/>.</summary>
+    public ReminderSource Source { get; set; } = ReminderSource.Manual;
+
+    /// <summary>The calendar event's UID, for reminders with <see cref="Source"/> IcsSubscription. Lets a
+    /// later sync recognize "this is the same event" (update it) instead of creating a duplicate.</summary>
+    public string? ExternalId { get; set; }
 }

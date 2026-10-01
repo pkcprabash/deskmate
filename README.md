@@ -14,6 +14,17 @@ sessions. The tray tooltip shows the time left. Lengths are set in Settings > Fo
 session runs, the regular "time for a break?" nudge is turned off. Messages go to a native
 notification if the avatar is hidden, and stay silent during quiet hours or pause.
 
+## Calendar sync (optional)
+
+Settings > Calendar imports events from a calendar's private ICS subscription URL — the
+"secret address" Google Calendar, Outlook.com, and Apple Calendar each let you copy out,
+with no OAuth app registration needed. Deskmate re-syncs it every few hours, plus on demand
+via "Sync now": new events become reminders, changed ones update in place, and ones removed
+from the feed are removed here too (only upcoming ones — past history is left alone). Manually
+created reminders are never touched by a sync. Recurring events (anything with an RRULE) are
+skipped rather than guessed at, since expanding recurrence rules correctly is its own project;
+only one-off events import for now.
+
 ## AI messages (optional)
 
 Settings > AI messages lets Deskmate rewrite its greetings, break nudges, and focus-session

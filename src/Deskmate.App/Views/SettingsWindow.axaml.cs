@@ -7,6 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Deskmate.Core.Models;
 using Deskmate.Infrastructure.Avatars;
+using Deskmate.Infrastructure.Calendar;
 using Deskmate.Infrastructure.Data;
 using Deskmate.Infrastructure.Startup;
 
@@ -20,6 +21,7 @@ public partial class SettingsWindow : Window
     public required SettingsService SettingsService { get; init; }
     public required IStartupRegistration StartupRegistration { get; init; }
     public required ReminderService ReminderService { get; init; }
+    public required CalendarSyncService CalendarSyncService { get; init; }
 
     /// <summary>Raised after a successful save, so the avatar window can reload the settings it caches.</summary>
     public event Action? SettingsSaved;
@@ -68,7 +70,61 @@ public partial class SettingsWindow : Window
         QuietHoursStartPicker.SelectedTime = (settings.QuietHoursStart ?? new TimeOnly(22, 0)).ToTimeSpan();
         QuietHoursEndPicker.SelectedTime = (settings.QuietHoursEnd ?? new TimeOnly(7, 0)).ToTimeSpan();
 
+        CalendarIcsUrlTextBox.Text = settings.CalendarIcsUrl;
+        UpdateCalendarSyncStatusText(settings.LastCalendarSyncAt, settings.LastCalendarSyncError);
+
         await ReloadRemindersAsync();
+    }
+
+    private void UpdateCalendarSyncStatusText(DateTimeOffset? lastSyncedAt, string? lastError)
+    {
+        if (!string.IsNullOrWhiteSpace(lastError))
+        {
+            CalendarSyncStatusText.Text = $"Last sync failed: {lastError}";
+        }
+        else if (lastSyncedAt is { } at)
+        {
+            CalendarSyncStatusText.Text = $"Last synced {at.LocalDateTime:MMM d, h:mm tt}.";
+        }
+        else
+        {
+            CalendarSyncStatusText.Text = "Not synced yet.";
+        }
+    }
+
+    private async void OnSyncCalendarNowClicked(object? sender, RoutedEventArgs e)
+    {
+        var url = CalendarIcsUrlTextBox.Text ?? "";
+
+        SyncCalendarNowButton.IsEnabled = false;
+        CalendarSyncStatusText.Text = "Syncing…";
+
+        try
+        {
+            await SettingsService.UpdateAsync(_settingsId, s => s.CalendarIcsUrl = url);
+            var (result, error) = await CalendarSyncService.SyncAsync(url);
+
+            await SettingsService.UpdateAsync(_settingsId, s =>
+            {
+                s.LastCalendarSyncAt = DateTimeOffset.Now;
+                s.LastCalendarSyncError = error;
+            });
+
+            if (result is { } r)
+            {
+                CalendarSyncStatusText.Text = $"Synced: {r.Added} added, {r.Updated} updated, {r.Removed} removed.";
+            }
+            else
+            {
+                CalendarSyncStatusText.Text = $"Sync failed: {error}";
+            }
+
+            await ReloadRemindersAsync();
+        }
+        finally
+        {
+            SyncCalendarNowButton.IsEnabled = true;
+        }
     }
 
     private async Task ReloadRemindersAsync()
@@ -138,6 +194,7 @@ public partial class SettingsWindow : Window
             settings.AvatarScale = AvatarScaleSlider.Value;
             settings.UserName = UserNameTextBox.Text ?? settings.UserName;
             settings.CurrentFocus = CurrentFocusTextBox.Text ?? settings.CurrentFocus;
+            settings.CalendarIcsUrl = CalendarIcsUrlTextBox.Text ?? "";
 
             if (WorkStartPicker.SelectedTime is { } workStart)
             {

@@ -3,6 +3,7 @@ using System;
 using Deskmate.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Deskmate.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(DeskmateDbContext))]
-    partial class DeskmateDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260930031726_AddReminderCalendarSync")]
+    partial class AddReminderCalendarSync
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
@@ -128,22 +131,12 @@ namespace Deskmate.Infrastructure.Data.Migrations
                     b.Property<TimeSpan>("BreakAfter")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("CalendarIcsUrl")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("CurrentFocus")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("FirstRunCompleted")
                         .HasColumnType("INTEGER");
-
-                    b.Property<DateTimeOffset?>("LastCalendarSyncAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("LastCalendarSyncError")
-                        .HasColumnType("TEXT");
 
                     b.Property<DateOnly?>("LastGreetingDate")
                         .HasColumnType("TEXT");
