@@ -9,10 +9,15 @@ public class CalendarSyncPlannerTests
 {
     private static readonly DateOnly Today = new(2026, 10, 1);
 
-    private static CalendarEvent Event(string id, string title, DateOnly date, TimeOnly? time = null) => new(id, title, date, time);
+    private static CalendarEvent Event(
+        string id, string title, DateOnly date, TimeOnly? time = null,
+        RecurrenceType recurrence = RecurrenceType.None, DateOnly? recurrenceEndDate = null) =>
+        new(id, title, date, time, recurrence, recurrenceEndDate);
 
-    private static SyncedReminderSnapshot Snapshot(int reminderId, string externalId, string title, DateOnly date, TimeOnly? time = null) =>
-        new(reminderId, externalId, title, date, time);
+    private static SyncedReminderSnapshot Snapshot(
+        int reminderId, string externalId, string title, DateOnly date, TimeOnly? time = null,
+        RecurrenceType recurrence = RecurrenceType.None, DateOnly? recurrenceEndDate = null) =>
+        new(reminderId, externalId, title, date, time, recurrence, recurrenceEndDate);
 
     [Fact]
     public void Plan_NewEvent_IsAdded()
@@ -135,5 +140,82 @@ public class CalendarSyncPlannerTests
         Assert.Empty(plan.ToAdd);
         Assert.Empty(plan.ToUpdate);
         Assert.Empty(plan.ToRemoveReminderIds);
+    }
+
+    [Fact]
+    public void Plan_NewRecurringEvent_CarriesRecurrenceFields()
+    {
+        var plan = CalendarSyncPlanner.Plan(
+            existing: [],
+            incoming: [Event("evt-1", "Standup", Today.AddDays(1), recurrence: RecurrenceType.Daily)],
+            windowStart: Today);
+
+        var added = Assert.Single(plan.ToAdd);
+        Assert.Equal(RecurrenceType.Daily, added.Recurrence);
+    }
+
+    [Fact]
+    public void Plan_RecurrenceTypeChanged_IsUpdated()
+    {
+        var plan = CalendarSyncPlanner.Plan(
+            existing: [Snapshot(1, "evt-1", "Standup", Today.AddDays(1), recurrence: RecurrenceType.Weekly)],
+            incoming: [Event("evt-1", "Standup", Today.AddDays(1), recurrence: RecurrenceType.Daily)],
+            windowStart: Today);
+
+        Assert.Single(plan.ToUpdate);
+    }
+
+    [Fact]
+    public void Plan_RecurrenceEndDateChanged_IsUpdated()
+    {
+        var plan = CalendarSyncPlanner.Plan(
+            existing: [Snapshot(1, "evt-1", "Standup", Today, recurrence: RecurrenceType.Daily, recurrenceEndDate: Today.AddDays(10))],
+            incoming: [Event("evt-1", "Standup", Today, recurrence: RecurrenceType.Daily, recurrenceEndDate: Today.AddDays(20))],
+            windowStart: Today);
+
+        Assert.Single(plan.ToUpdate);
+    }
+
+    [Fact]
+    public void Plan_RecurringEventGoneFromFeed_WithOldStartDate_IsStillRemoved()
+    {
+        // The series started years ago but is still recurring indefinitely (no end date) —
+        // its original Date being long past must not protect it from removal.
+        var plan = CalendarSyncPlanner.Plan(
+            existing: [Snapshot(1, "evt-1", "Old standing meeting", new DateOnly(2020, 1, 1), recurrence: RecurrenceType.Weekly)],
+            incoming: [],
+            windowStart: Today);
+
+        Assert.Equal([1], plan.ToRemoveReminderIds);
+    }
+
+    [Fact]
+    public void Plan_RecurringEventGoneFromFeed_ButItsSeriesAlreadyEnded_IsLeftAlone()
+    {
+        var plan = CalendarSyncPlanner.Plan(
+            existing:
+            [
+                Snapshot(1, "evt-1", "Finished series", new DateOnly(2020, 1, 1),
+                    recurrence: RecurrenceType.Weekly, recurrenceEndDate: Today.AddDays(-30)),
+            ],
+            incoming: [],
+            windowStart: Today);
+
+        Assert.Empty(plan.ToRemoveReminderIds);
+    }
+
+    [Fact]
+    public void Plan_RecurringEventGoneFromFeed_SeriesEndingInTheFuture_IsRemoved()
+    {
+        var plan = CalendarSyncPlanner.Plan(
+            existing:
+            [
+                Snapshot(1, "evt-1", "Short series", new DateOnly(2020, 1, 1),
+                    recurrence: RecurrenceType.Weekly, recurrenceEndDate: Today.AddDays(5)),
+            ],
+            incoming: [],
+            windowStart: Today);
+
+        Assert.Equal([1], plan.ToRemoveReminderIds);
     }
 }

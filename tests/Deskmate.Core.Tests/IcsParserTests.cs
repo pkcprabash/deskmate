@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Deskmate.Core;
+using Deskmate.Core.Models;
 
 namespace Deskmate.Core.Tests;
 
@@ -119,11 +120,97 @@ public class IcsParserTests
     }
 
     [Fact]
-    public void Parse_RecurringEvent_IsSkippedRatherThanExpanded()
+    public void Parse_SimpleRecurringEvent_IsImportedAsRecurring()
     {
         var ics = Wrap("UID:abc-9\nSUMMARY:Weekly sync\nDTSTART;VALUE=DATE:20261005\nRRULE:FREQ=WEEKLY;COUNT=5");
 
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Equal(RecurrenceType.Weekly, evt.Recurrence);
+        Assert.Equal(new DateOnly(2026, 11, 2), evt.RecurrenceEndDate); // the 5th weekly occurrence from Oct 5
+    }
+
+    [Theory]
+    [InlineData("DAILY", RecurrenceType.Daily)]
+    [InlineData("daily", RecurrenceType.Daily)] // FREQ is case-insensitive
+    [InlineData("WEEKLY", RecurrenceType.Weekly)]
+    [InlineData("MONTHLY", RecurrenceType.Monthly)]
+    [InlineData("YEARLY", RecurrenceType.Yearly)]
+    public void Parse_RRuleFrequencies_MapToTheMatchingRecurrenceType(string freq, RecurrenceType expected)
+    {
+        var ics = Wrap($"UID:freq-1\nSUMMARY:Event\nDTSTART;VALUE=DATE:20261005\nRRULE:FREQ={freq}");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Equal(expected, evt.Recurrence);
+        Assert.Null(evt.RecurrenceEndDate); // no COUNT/UNTIL: recurs indefinitely
+    }
+
+    [Fact]
+    public void Parse_RRuleWithUntilDateOnly_SetsRecurrenceEndDate()
+    {
+        var ics = Wrap("UID:until-1\nSUMMARY:Event\nDTSTART;VALUE=DATE:20261005\nRRULE:FREQ=DAILY;UNTIL=20261010");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Equal(new DateOnly(2026, 10, 10), evt.RecurrenceEndDate);
+    }
+
+    [Fact]
+    public void Parse_RRuleWithUntilUtcDateTime_ConvertsToLocalDate()
+    {
+        var ics = Wrap("UID:until-2\nSUMMARY:Event\nDTSTART:20261005T090000\nRRULE:FREQ=DAILY;UNTIL=20261010T235900Z");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        var expectedLocal = DateTime.SpecifyKind(new DateTime(2026, 10, 10, 23, 59, 0), DateTimeKind.Utc).ToLocalTime();
+        Assert.Equal(DateOnly.FromDateTime(expectedLocal), evt.RecurrenceEndDate);
+    }
+
+    [Fact]
+    public void Parse_RRuleWithExplicitIntervalOne_IsStillSupported()
+    {
+        var ics = Wrap("UID:interval-1\nSUMMARY:Event\nDTSTART;VALUE=DATE:20261005\nRRULE:FREQ=DAILY;INTERVAL=1;COUNT=3");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Equal(new DateOnly(2026, 10, 7), evt.RecurrenceEndDate);
+    }
+
+    [Theory]
+    [InlineData("FREQ=WEEKLY;INTERVAL=2;COUNT=5")] // every other week: interval != 1
+    [InlineData("FREQ=WEEKLY;BYDAY=MO,WE,FR")] // specific weekdays
+    [InlineData("FREQ=MONTHLY;BYMONTHDAY=15")] // a specific day of the month
+    [InlineData("FREQ=YEARLY;BYMONTH=12")]
+    [InlineData("FREQ=DAILY;COUNT=5;UNTIL=20261010")] // COUNT and UNTIL together: malformed per RFC 5545
+    [InlineData("FREQ=SECONDLY;COUNT=5")] // an unsupported frequency
+    [InlineData("COUNT=5")] // no FREQ at all
+    [InlineData("FREQ=DAILY;COUNT=abc")] // non-numeric COUNT
+    [InlineData("FREQ=DAILY;UNTIL=not-a-date")]
+    [InlineData("not even key-value pairs")]
+    public void Parse_UnsupportedOrMalformedRRule_SkipsTheEventEntirely(string rrule)
+    {
+        var ics = Wrap($"UID:unsupported-1\nSUMMARY:Event\nDTSTART;VALUE=DATE:20261005\nRRULE:{rrule}");
+
         Assert.Empty(IcsParser.Parse(ics));
+    }
+
+    [Fact]
+    public void Parse_RRuleWithZeroCount_IsRejected()
+    {
+        var ics = Wrap("UID:zero-count\nSUMMARY:Event\nDTSTART;VALUE=DATE:20261005\nRRULE:FREQ=DAILY;COUNT=0");
+
+        Assert.Empty(IcsParser.Parse(ics));
+    }
+
+    [Fact]
+    public void Parse_RRuleWithWkst_IsIgnoredButStillSupported()
+    {
+        var ics = Wrap("UID:wkst-1\nSUMMARY:Event\nDTSTART;VALUE=DATE:20261005\nRRULE:FREQ=WEEKLY;WKST=SU;COUNT=2");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Equal(RecurrenceType.Weekly, evt.Recurrence);
     }
 
     [Fact]

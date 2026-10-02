@@ -164,6 +164,67 @@ public class ReminderRulesTests
     }
 
     [Fact]
+    public void GenerateOccurrenceDates_RecurrenceEndDate_StopsAfterTheEndDate()
+    {
+        var sut = new ReminderRules();
+        var reminder = new Reminder
+        {
+            Date = new DateOnly(2026, 10, 1),
+            Recurrence = RecurrenceType.Daily,
+            RecurrenceEndDate = new DateOnly(2026, 10, 4),
+        };
+
+        var dates = sut.GenerateOccurrenceDates(reminder, new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 10)).ToList();
+
+        Assert.Equal(
+            [new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 2), new DateOnly(2026, 10, 3), new DateOnly(2026, 10, 4)],
+            dates);
+    }
+
+    [Fact]
+    public void GenerateOccurrenceDates_RecurrenceEndDate_IncludesTheEndDateItself()
+    {
+        var sut = new ReminderRules();
+        var reminder = new Reminder
+        {
+            Date = new DateOnly(2026, 10, 1),
+            Recurrence = RecurrenceType.Weekly,
+            RecurrenceEndDate = new DateOnly(2026, 10, 8), // exactly the second occurrence
+        };
+
+        var dates = sut.GenerateOccurrenceDates(reminder, new DateOnly(2026, 10, 1), new DateOnly(2026, 11, 1)).ToList();
+
+        Assert.Equal([new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 8)], dates);
+    }
+
+    [Fact]
+    public void GenerateOccurrenceDates_RecurrenceEndDate_AfterTheQueriedRange_HasNoEffect()
+    {
+        var sut = new ReminderRules();
+        var reminder = new Reminder
+        {
+            Date = new DateOnly(2026, 10, 1),
+            Recurrence = RecurrenceType.Daily,
+            RecurrenceEndDate = new DateOnly(2027, 1, 1),
+        };
+
+        var dates = sut.GenerateOccurrenceDates(reminder, new DateOnly(2026, 10, 3), new DateOnly(2026, 10, 5)).ToList();
+
+        Assert.Equal([new DateOnly(2026, 10, 3), new DateOnly(2026, 10, 4), new DateOnly(2026, 10, 5)], dates);
+    }
+
+    [Fact]
+    public void GenerateOccurrenceDates_NoRecurrenceEndDate_RecursIndefinitely()
+    {
+        var sut = new ReminderRules();
+        var reminder = new Reminder { Date = new DateOnly(2026, 10, 1), Recurrence = RecurrenceType.Yearly, RecurrenceEndDate = null };
+
+        var dates = sut.GenerateOccurrenceDates(reminder, new DateOnly(2030, 1, 1), new DateOnly(2030, 12, 31)).ToList();
+
+        Assert.Equal([new DateOnly(2030, 10, 1)], dates);
+    }
+
+    [Fact]
     public void MarkShown_SetsTheCorrespondingFlag()
     {
         var sut = new ReminderRules();

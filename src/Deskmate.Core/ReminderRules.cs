@@ -25,8 +25,9 @@ public class ReminderRules
 
         var occurrenceIndex = 0;
         var current = reminder.Date;
+        var lastDate = reminder.RecurrenceEndDate is { } end && end < through ? end : through;
 
-        while (current <= through)
+        while (current <= lastDate)
         {
             if (current >= from)
             {
@@ -34,14 +35,9 @@ public class ReminderRules
             }
 
             occurrenceIndex++;
-            current = reminder.Recurrence switch
-            {
-                RecurrenceType.Daily => reminder.Date.AddDays(occurrenceIndex),
-                RecurrenceType.Weekly => reminder.Date.AddDays(occurrenceIndex * 7),
-                RecurrenceType.Monthly => AddMonthsClamped(reminder.Date, occurrenceIndex),
-                RecurrenceType.Yearly => AddYearsClamped(reminder.Date, occurrenceIndex),
-                _ => through.AddDays(1),
-            };
+            current = reminder.Recurrence == RecurrenceType.None
+                ? through.AddDays(1) // unreachable in practice (None returns early above); guards the loop if it ever isn't
+                : RecurrenceStep.NthOccurrence(reminder.Date, reminder.Recurrence, occurrenceIndex);
         }
     }
 
@@ -117,19 +113,4 @@ public class ReminderRules
         }
     }
 
-    private static DateOnly AddMonthsClamped(DateOnly date, int months)
-    {
-        var totalMonths = date.Month - 1 + months;
-        var year = date.Year + totalMonths / 12;
-        var month = totalMonths % 12 + 1;
-        var day = Math.Min(date.Day, DateTime.DaysInMonth(year, month));
-        return new DateOnly(year, month, day);
-    }
-
-    private static DateOnly AddYearsClamped(DateOnly date, int years)
-    {
-        var year = date.Year + years;
-        var day = Math.Min(date.Day, DateTime.DaysInMonth(year, date.Month));
-        return new DateOnly(year, date.Month, day);
-    }
 }

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Calendar sync now expands simple recurring events (daily/weekly/monthly/yearly, with an optional end date or count) into recurring reminders, instead of skipping every recurring event; reminders also gained an optional recurrence end date.
+
 - Calendar sync (Settings > Calendar): imports events from a calendar's private ICS subscription URL (Google/Outlook/Apple, no OAuth needed) into reminders, re-synced periodically and on demand, without disturbing manually-created reminders. Recurring events are not yet expanded.
 - Optional AI-generated messages (Settings > AI messages): rewrites greetings, break suggestions, and Pomodoro messages via the Anthropic API using your own key, falling back to the built-in phrasing when disabled, unconfigured, or on any failure/timeout.
 - Linux support: start-at-login (XDG autostart), sleep/wake detection (systemd-logind), full-screen auto-hide (X11 EWMH), and native notifications (org.freedesktop.Notifications). CI now builds and tests on Ubuntu too.

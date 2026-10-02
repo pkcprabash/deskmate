@@ -21,9 +21,10 @@ Settings > Calendar imports events from a calendar's private ICS subscription UR
 with no OAuth app registration needed. Deskmate re-syncs it every few hours, plus on demand
 via "Sync now": new events become reminders, changed ones update in place, and ones removed
 from the feed are removed here too (only upcoming ones — past history is left alone). Manually
-created reminders are never touched by a sync. Recurring events (anything with an RRULE) are
-skipped rather than guessed at, since expanding recurrence rules correctly is its own project;
-only one-off events import for now.
+created reminders are never touched by a sync. Simple recurring events (daily/weekly/monthly/
+yearly, optionally ending on a date or after a count) import as recurring reminders; anything
+more specific — particular weekdays, a day-of-month rule, or any other pattern — is skipped
+rather than risk landing on the wrong dates.
 
 ## AI messages (optional)
 

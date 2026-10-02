@@ -10,6 +10,8 @@ public class Reminder
     public DateOnly Date { get; set; }
     public TimeOnly? Time { get; set; }
     public RecurrenceType Recurrence { get; set; }
+    /// <summary>Last date this reminder recurs on, inclusive. Null means it repeats indefinitely.</summary>
+    public DateOnly? RecurrenceEndDate { get; set; }
     public bool AlertDayBefore { get; set; } = true;
     public bool AlertOnDay { get; set; } = true;
     public TimeSpan? AlertBefore { get; set; }

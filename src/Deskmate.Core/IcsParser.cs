@@ -13,8 +13,10 @@ namespace Deskmate.Core;
 /// against raw ICS text.
 ///
 /// Known, deliberate limitations:
-/// - Recurring events (an RRULE) are not expanded and are skipped entirely, rather than risk
-///   silently importing a wrong occurrence.
+/// - Only the plain FREQ=DAILY/WEEKLY/MONTHLY/YEARLY recurrence shapes (interval 1, an optional
+///   COUNT or UNTIL, nothing else) are expanded. Any RRULE with BYDAY, an interval other than
+///   1, or any other rule part is left alone, since getting a date wrong is worse than skipping
+///   the event entirely.
 /// - A DTSTART with an explicit UTC "Z" suffix is converted to local time; a "floating" local
 ///   date-time (no "Z") is read as its literal wall-clock value — any TZID parameter is not
 ///   resolved. Correct for the common case (the feed already in the viewer's zone); can be
@@ -97,7 +99,7 @@ public static class IcsParser
         string? status = null;
         string? dtStartProperty = null;
         string? dtStartValue = null;
-        var hasRecurrenceRule = false;
+        string? rruleValue = null;
 
         foreach (var line in lines)
         {
@@ -123,7 +125,7 @@ public static class IcsParser
                     status = value.Trim();
                     break;
                 case "RRULE":
-                    hasRecurrenceRule = true;
+                    rruleValue = value.Trim();
                     break;
                 case "DTSTART":
                     dtStartProperty = propertyName;
@@ -132,7 +134,7 @@ public static class IcsParser
             }
         }
 
-        if (string.IsNullOrWhiteSpace(uid) || dtStartValue is null || hasRecurrenceRule
+        if (string.IsNullOrWhiteSpace(uid) || dtStartValue is null
             || string.Equals(status, "CANCELLED", StringComparison.OrdinalIgnoreCase))
         {
             return false;
@@ -143,20 +145,127 @@ public static class IcsParser
             return false;
         }
 
+        var recurrence = RecurrenceType.None;
+        DateOnly? recurrenceEndDate = null;
+
+        if (rruleValue is not null && !TryParseRRule(rruleValue, date, out recurrence, out recurrenceEndDate))
+        {
+            return false;
+        }
+
         var title = string.IsNullOrWhiteSpace(summary) ? "(untitled event)" : summary;
-        calendarEvent = new CalendarEvent(uid, title, date, time);
+        calendarEvent = new CalendarEvent(uid, title, date, time, recurrence, recurrenceEndDate);
+        return true;
+    }
+
+    private static readonly HashSet<string> SupportedRRuleKeys =
+        new(StringComparer.OrdinalIgnoreCase) { "FREQ", "INTERVAL", "COUNT", "UNTIL", "WKST" };
+
+    /// <summary>
+    /// Parses only the RRULE shapes listed in this class's doc comment. Returns false for
+    /// anything else — including a well-formed but unsupported rule — so the caller skips the
+    /// event rather than import it on the wrong dates.
+    /// </summary>
+    private static bool TryParseRRule(string rruleValue, DateOnly dtStartDate, out RecurrenceType recurrence, out DateOnly? recurrenceEndDate)
+    {
+        recurrence = RecurrenceType.None;
+        recurrenceEndDate = null;
+
+        var parts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var part in rruleValue.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var equalsIndex = part.IndexOf('=');
+            if (equalsIndex < 0)
+            {
+                return false;
+            }
+
+            parts[part[..equalsIndex].Trim()] = part[(equalsIndex + 1)..].Trim();
+        }
+
+        foreach (var key in parts.Keys)
+        {
+            if (!SupportedRRuleKeys.Contains(key))
+            {
+                return false;
+            }
+        }
+
+        if (!parts.TryGetValue("FREQ", out var freq))
+        {
+            return false;
+        }
+
+        recurrence = freq.ToUpperInvariant() switch
+        {
+            "DAILY" => RecurrenceType.Daily,
+            "WEEKLY" => RecurrenceType.Weekly,
+            "MONTHLY" => RecurrenceType.Monthly,
+            "YEARLY" => RecurrenceType.Yearly,
+            _ => RecurrenceType.None,
+        };
+
+        if (recurrence == RecurrenceType.None)
+        {
+            return false;
+        }
+
+        if (parts.TryGetValue("INTERVAL", out var intervalText) && (!int.TryParse(intervalText, out var interval) || interval != 1))
+        {
+            return false;
+        }
+
+        var hasCount = parts.TryGetValue("COUNT", out var countText);
+        var hasUntil = parts.TryGetValue("UNTIL", out var untilText);
+
+        if (hasCount && hasUntil)
+        {
+            return false; // RFC 5545 forbids both together; treat as malformed rather than guess which wins.
+        }
+
+        if (hasCount)
+        {
+            if (!int.TryParse(countText, out var count) || count < 1)
+            {
+                return false;
+            }
+
+            recurrenceEndDate = RecurrenceStep.NthOccurrence(dtStartDate, recurrence, count - 1);
+        }
+        else if (hasUntil)
+        {
+            if (!TryParseDateOrDateTime(untilText!, out var untilDate, out _))
+            {
+                return false;
+            }
+
+            recurrenceEndDate = untilDate;
+        }
+
         return true;
     }
 
     private static bool TryParseDtStart(string propertyName, string value, out DateOnly date, out TimeOnly? time)
     {
-        date = default;
-        time = null;
-
         var isDateOnly = propertyName.Contains("VALUE=DATE", StringComparison.OrdinalIgnoreCase)
             && !propertyName.Contains("VALUE=DATE-TIME", StringComparison.OrdinalIgnoreCase);
 
-        if (isDateOnly || (value.Length == 8 && !value.Contains('T')))
+        if (isDateOnly)
+        {
+            time = null;
+            return DateOnly.TryParseExact(value, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
+        }
+
+        return TryParseDateOrDateTime(value, out date, out time);
+    }
+
+    /// <summary>Shared by DTSTART (without an explicit VALUE=DATE) and RRULE's UNTIL, whose format mirrors it.</summary>
+    private static bool TryParseDateOrDateTime(string value, out DateOnly date, out TimeOnly? time)
+    {
+        date = default;
+        time = null;
+
+        if (value.Length == 8 && !value.Contains('T'))
         {
             return DateOnly.TryParseExact(value, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
         }
