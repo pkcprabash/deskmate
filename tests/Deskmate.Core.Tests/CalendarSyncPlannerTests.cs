@@ -11,13 +11,15 @@ public class CalendarSyncPlannerTests
 
     private static CalendarEvent Event(
         string id, string title, DateOnly date, TimeOnly? time = null,
-        RecurrenceType recurrence = RecurrenceType.None, DateOnly? recurrenceEndDate = null) =>
-        new(id, title, date, time, recurrence, recurrenceEndDate);
+        RecurrenceType recurrence = RecurrenceType.None, DateOnly? recurrenceEndDate = null,
+        DaysOfWeekFlags? recurrenceWeekdays = null) =>
+        new(id, title, date, time, recurrence, recurrenceEndDate, recurrenceWeekdays);
 
     private static SyncedReminderSnapshot Snapshot(
         int reminderId, string externalId, string title, DateOnly date, TimeOnly? time = null,
-        RecurrenceType recurrence = RecurrenceType.None, DateOnly? recurrenceEndDate = null) =>
-        new(reminderId, externalId, title, date, time, recurrence, recurrenceEndDate);
+        RecurrenceType recurrence = RecurrenceType.None, DateOnly? recurrenceEndDate = null,
+        DaysOfWeekFlags? recurrenceWeekdays = null) =>
+        new(reminderId, externalId, title, date, time, recurrence, recurrenceEndDate, recurrenceWeekdays);
 
     [Fact]
     public void Plan_NewEvent_IsAdded()
@@ -174,6 +176,28 @@ public class CalendarSyncPlannerTests
             windowStart: Today);
 
         Assert.Single(plan.ToUpdate);
+    }
+
+    [Fact]
+    public void Plan_RecurrenceWeekdaysChanged_IsUpdated()
+    {
+        var plan = CalendarSyncPlanner.Plan(
+            existing: [Snapshot(1, "evt-1", "Standup", Today, recurrence: RecurrenceType.Weekly, recurrenceWeekdays: DaysOfWeekFlags.Monday)],
+            incoming: [Event("evt-1", "Standup", Today, recurrence: RecurrenceType.Weekly, recurrenceWeekdays: DaysOfWeekFlags.Monday | DaysOfWeekFlags.Friday)],
+            windowStart: Today);
+
+        Assert.Single(plan.ToUpdate);
+    }
+
+    [Fact]
+    public void Plan_UnchangedRecurrenceWeekdays_IsNotUpdated()
+    {
+        var plan = CalendarSyncPlanner.Plan(
+            existing: [Snapshot(1, "evt-1", "Standup", Today, recurrence: RecurrenceType.Weekly, recurrenceWeekdays: DaysOfWeekFlags.Monday)],
+            incoming: [Event("evt-1", "Standup", Today, recurrence: RecurrenceType.Weekly, recurrenceWeekdays: DaysOfWeekFlags.Monday)],
+            windowStart: Today);
+
+        Assert.Empty(plan.ToUpdate);
     }
 
     [Fact]

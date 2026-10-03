@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Calendar sync now also expands weekly recurring events on specific weekdays ("every Mon/Wed/Fri"), not just plain weekly/daily/monthly/yearly; reminders gained an optional weekday set alongside the existing recurrence end date.
+
 - Calendar sync now expands simple recurring events (daily/weekly/monthly/yearly, with an optional end date or count) into recurring reminders, instead of skipping every recurring event; reminders also gained an optional recurrence end date.
 
 - Calendar sync (Settings > Calendar): imports events from a calendar's private ICS subscription URL (Google/Outlook/Apple, no OAuth needed) into reminders, re-synced periodically and on demand, without disturbing manually-created reminders. Recurring events are not yet expanded.

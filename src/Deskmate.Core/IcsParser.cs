@@ -13,10 +13,10 @@ namespace Deskmate.Core;
 /// against raw ICS text.
 ///
 /// Known, deliberate limitations:
-/// - Only the plain FREQ=DAILY/WEEKLY/MONTHLY/YEARLY recurrence shapes (interval 1, an optional
-///   COUNT or UNTIL, nothing else) are expanded. Any RRULE with BYDAY, an interval other than
-///   1, or any other rule part is left alone, since getting a date wrong is worse than skipping
-///   the event entirely.
+/// - Only FREQ=DAILY/WEEKLY/MONTHLY/YEARLY at interval 1, with an optional COUNT or UNTIL, are
+///   expanded — plus, for WEEKLY only, a plain BYDAY list of weekdays ("every Mon/Wed/Fri").
+///   An ordinal BYDAY ("the 3rd Thursday"), an interval other than 1, or any other rule part is
+///   left alone, since getting a date wrong is worse than skipping the event entirely.
 /// - A DTSTART with an explicit UTC "Z" suffix is converted to local time; a "floating" local
 ///   date-time (no "Z") is read as its literal wall-clock value — any TZID parameter is not
 ///   resolved. Correct for the common case (the feed already in the viewer's zone); can be
@@ -147,29 +147,44 @@ public static class IcsParser
 
         var recurrence = RecurrenceType.None;
         DateOnly? recurrenceEndDate = null;
+        DaysOfWeekFlags? weekdays = null;
 
-        if (rruleValue is not null && !TryParseRRule(rruleValue, date, out recurrence, out recurrenceEndDate))
+        if (rruleValue is not null && !TryParseRRule(rruleValue, date, out recurrence, out recurrenceEndDate, out weekdays))
         {
             return false;
         }
 
         var title = string.IsNullOrWhiteSpace(summary) ? "(untitled event)" : summary;
-        calendarEvent = new CalendarEvent(uid, title, date, time, recurrence, recurrenceEndDate);
+        calendarEvent = new CalendarEvent(uid, title, date, time, recurrence, recurrenceEndDate, weekdays);
         return true;
     }
 
     private static readonly HashSet<string> SupportedRRuleKeys =
-        new(StringComparer.OrdinalIgnoreCase) { "FREQ", "INTERVAL", "COUNT", "UNTIL", "WKST" };
+        new(StringComparer.OrdinalIgnoreCase) { "FREQ", "INTERVAL", "COUNT", "UNTIL", "WKST", "BYDAY" };
+
+    private static readonly Dictionary<string, DaysOfWeekFlags> WeekdayCodes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["MO"] = DaysOfWeekFlags.Monday,
+        ["TU"] = DaysOfWeekFlags.Tuesday,
+        ["WE"] = DaysOfWeekFlags.Wednesday,
+        ["TH"] = DaysOfWeekFlags.Thursday,
+        ["FR"] = DaysOfWeekFlags.Friday,
+        ["SA"] = DaysOfWeekFlags.Saturday,
+        ["SU"] = DaysOfWeekFlags.Sunday,
+    };
 
     /// <summary>
     /// Parses only the RRULE shapes listed in this class's doc comment. Returns false for
     /// anything else — including a well-formed but unsupported rule — so the caller skips the
     /// event rather than import it on the wrong dates.
     /// </summary>
-    private static bool TryParseRRule(string rruleValue, DateOnly dtStartDate, out RecurrenceType recurrence, out DateOnly? recurrenceEndDate)
+    private static bool TryParseRRule(
+        string rruleValue, DateOnly dtStartDate,
+        out RecurrenceType recurrence, out DateOnly? recurrenceEndDate, out DaysOfWeekFlags? weekdays)
     {
         recurrence = RecurrenceType.None;
         recurrenceEndDate = null;
+        weekdays = null;
 
         var parts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var part in rruleValue.Split(';', StringSplitOptions.RemoveEmptyEntries))
@@ -215,6 +230,17 @@ public static class IcsParser
             return false;
         }
 
+        if (parts.TryGetValue("BYDAY", out var byDayText))
+        {
+            // BYDAY only means plain weekdays (no "1MO"/"-1FR" ordinal prefix) for WEEKLY; an
+            // ordinal BYDAY on MONTHLY/YEARLY ("the 3rd Thursday") is a different, unsupported
+            // recurrence shape.
+            if (recurrence != RecurrenceType.Weekly || !TryParseByDay(byDayText, out weekdays))
+            {
+                return false;
+            }
+        }
+
         var hasCount = parts.TryGetValue("COUNT", out var countText);
         var hasUntil = parts.TryGetValue("UNTIL", out var untilText);
 
@@ -230,7 +256,9 @@ public static class IcsParser
                 return false;
             }
 
-            recurrenceEndDate = RecurrenceStep.NthOccurrence(dtStartDate, recurrence, count - 1);
+            recurrenceEndDate = weekdays is { } set && set != DaysOfWeekFlags.None
+                ? NthWeekdayOccurrence(dtStartDate, set, count)
+                : RecurrenceStep.NthOccurrence(dtStartDate, recurrence, count - 1);
         }
         else if (hasUntil)
         {
@@ -243,6 +271,54 @@ public static class IcsParser
         }
 
         return true;
+    }
+
+    /// <summary>BYDAY's value for a WEEKLY rule: a comma-separated list of plain weekday codes (MO, TU, ...), no ordinal prefix.</summary>
+    private static bool TryParseByDay(string byDayValue, out DaysOfWeekFlags? weekdays)
+    {
+        weekdays = null;
+        var set = DaysOfWeekFlags.None;
+
+        foreach (var token in byDayValue.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (!WeekdayCodes.TryGetValue(token.Trim(), out var flag))
+            {
+                return false;
+            }
+
+            set |= flag;
+        }
+
+        if (set == DaysOfWeekFlags.None)
+        {
+            return false;
+        }
+
+        weekdays = set;
+        return true;
+    }
+
+    /// <summary>The date of the Nth (1-based) occurrence of a weekday-filtered weekly recurrence, counting <paramref name="start"/>'s own date as the first if it matches.</summary>
+    private static DateOnly NthWeekdayOccurrence(DateOnly start, DaysOfWeekFlags weekdays, int count)
+    {
+        var matched = 0;
+        var day = start;
+
+        // At least one matching weekday occurs within any 7-day span, so this always terminates
+        // well before the cap; it's only a defensive guard against weekdays ever being None here.
+        for (var daysChecked = 0; daysChecked < 7 * count + 7; daysChecked++, day = day.AddDays(1))
+        {
+            if (weekdays.Contains(day.DayOfWeek))
+            {
+                matched++;
+                if (matched == count)
+                {
+                    return day;
+                }
+            }
+        }
+
+        return day;
     }
 
     private static bool TryParseDtStart(string propertyName, string value, out DateOnly date, out TimeOnly? time)

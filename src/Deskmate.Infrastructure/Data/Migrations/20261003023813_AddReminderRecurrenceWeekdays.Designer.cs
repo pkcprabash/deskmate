@@ -3,6 +3,7 @@ using System;
 using Deskmate.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Deskmate.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(DeskmateDbContext))]
-    partial class DeskmateDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261003023813_AddReminderRecurrenceWeekdays")]
+    partial class AddReminderRecurrenceWeekdays
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
@@ -65,7 +68,7 @@ namespace Deskmate.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Reminders", (string)null);
+                    b.ToTable("Reminders");
                 });
 
             modelBuilder.Entity("Deskmate.Core.Models.ReminderOccurrence", b =>
@@ -100,7 +103,7 @@ namespace Deskmate.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ReminderOccurrences", (string)null);
+                    b.ToTable("ReminderOccurrences");
                 });
 
             modelBuilder.Entity("Deskmate.Core.Models.UserSettings", b =>
@@ -202,7 +205,7 @@ namespace Deskmate.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("UserSettings", (string)null);
+                    b.ToTable("UserSettings");
                 });
 #pragma warning restore 612, 618
         }

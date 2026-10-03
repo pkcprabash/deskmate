@@ -179,7 +179,11 @@ public class IcsParserTests
 
     [Theory]
     [InlineData("FREQ=WEEKLY;INTERVAL=2;COUNT=5")] // every other week: interval != 1
-    [InlineData("FREQ=WEEKLY;BYDAY=MO,WE,FR")] // specific weekdays
+    [InlineData("FREQ=MONTHLY;BYDAY=3TH")] // ordinal BYDAY ("3rd Thursday"): a different recurrence shape
+    [InlineData("FREQ=YEARLY;BYDAY=1MO")]
+    [InlineData("FREQ=WEEKLY;BYDAY=1MO,WE")] // an ordinal prefix isn't valid for WEEKLY either
+    [InlineData("FREQ=WEEKLY;BYDAY=XX")] // not a real weekday code
+    [InlineData("FREQ=WEEKLY;BYDAY=")] // empty BYDAY
     [InlineData("FREQ=MONTHLY;BYMONTHDAY=15")] // a specific day of the month
     [InlineData("FREQ=YEARLY;BYMONTH=12")]
     [InlineData("FREQ=DAILY;COUNT=5;UNTIL=20261010")] // COUNT and UNTIL together: malformed per RFC 5545
@@ -211,6 +215,69 @@ public class IcsParserTests
         var evt = Assert.Single(IcsParser.Parse(ics));
 
         Assert.Equal(RecurrenceType.Weekly, evt.Recurrence);
+    }
+
+    [Fact]
+    public void Parse_WeeklyByDay_SetsRecurrenceWeekdays()
+    {
+        var ics = Wrap("UID:byday-1\nSUMMARY:Standup\nDTSTART;VALUE=DATE:20261005\nRRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Equal(RecurrenceType.Weekly, evt.Recurrence);
+        Assert.Equal(DaysOfWeekFlags.Monday | DaysOfWeekFlags.Wednesday | DaysOfWeekFlags.Friday, evt.RecurrenceWeekdays);
+        Assert.Null(evt.RecurrenceEndDate);
+    }
+
+    [Fact]
+    public void Parse_WeeklyByDay_IsCaseInsensitive()
+    {
+        var ics = Wrap("UID:byday-2\nSUMMARY:Standup\nDTSTART;VALUE=DATE:20261005\nRRULE:FREQ=WEEKLY;BYDAY=mo,we");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Equal(DaysOfWeekFlags.Monday | DaysOfWeekFlags.Wednesday, evt.RecurrenceWeekdays);
+    }
+
+    [Fact]
+    public void Parse_WeeklyByDay_WithCount_SetsRecurrenceEndDateToTheNthMatchingWeekday()
+    {
+        // Starting Monday Oct 5 2026, Mon/Wed/Fri: Oct5, Oct7, Oct9, Oct12, Oct14 -> the 5th is Oct 14.
+        var ics = Wrap("UID:byday-3\nSUMMARY:Standup\nDTSTART;VALUE=DATE:20261005\nRRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=5");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Equal(new DateOnly(2026, 10, 14), evt.RecurrenceEndDate);
+    }
+
+    [Fact]
+    public void Parse_WeeklyByDay_WithUntil_SetsRecurrenceEndDate()
+    {
+        var ics = Wrap("UID:byday-4\nSUMMARY:Standup\nDTSTART;VALUE=DATE:20261005\nRRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR;UNTIL=20261020");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Equal(new DateOnly(2026, 10, 20), evt.RecurrenceEndDate);
+    }
+
+    [Fact]
+    public void Parse_PlainWeeklyRRule_LeavesRecurrenceWeekdaysNull()
+    {
+        var ics = Wrap("UID:byday-5\nSUMMARY:Event\nDTSTART;VALUE=DATE:20261005\nRRULE:FREQ=WEEKLY;COUNT=3");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Null(evt.RecurrenceWeekdays);
+    }
+
+    [Fact]
+    public void Parse_NonWeeklyRRule_DoesNotSetRecurrenceWeekdays()
+    {
+        var ics = Wrap("UID:byday-6\nSUMMARY:Event\nDTSTART;VALUE=DATE:20261005\nRRULE:FREQ=DAILY;COUNT=3");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Null(evt.RecurrenceWeekdays);
     }
 
     [Fact]

@@ -225,6 +225,91 @@ public class ReminderRulesTests
     }
 
     [Fact]
+    public void GenerateOccurrenceDates_WeeklyWithSpecificWeekdays_ReturnsOnlyThoseWeekdays()
+    {
+        var sut = new ReminderRules();
+        var reminder = new Reminder
+        {
+            Date = new DateOnly(2026, 10, 5), // a Monday
+            Recurrence = RecurrenceType.Weekly,
+            RecurrenceWeekdays = DaysOfWeekFlags.Monday | DaysOfWeekFlags.Wednesday | DaysOfWeekFlags.Friday,
+        };
+
+        var dates = sut.GenerateOccurrenceDates(reminder, new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 16)).ToList();
+
+        Assert.Equal(
+            [
+                new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 7), new DateOnly(2026, 10, 9),
+                new DateOnly(2026, 10, 12), new DateOnly(2026, 10, 14), new DateOnly(2026, 10, 16),
+            ],
+            dates);
+    }
+
+    [Fact]
+    public void GenerateOccurrenceDates_WeeklyWithSpecificWeekdays_RespectsRecurrenceEndDate()
+    {
+        var sut = new ReminderRules();
+        var reminder = new Reminder
+        {
+            Date = new DateOnly(2026, 10, 5),
+            Recurrence = RecurrenceType.Weekly,
+            RecurrenceWeekdays = DaysOfWeekFlags.Monday | DaysOfWeekFlags.Friday,
+            RecurrenceEndDate = new DateOnly(2026, 10, 10),
+        };
+
+        var dates = sut.GenerateOccurrenceDates(reminder, new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 31)).ToList();
+
+        Assert.Equal([new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 9)], dates);
+    }
+
+    [Fact]
+    public void GenerateOccurrenceDates_WeeklyWithSpecificWeekdays_RespectsFromWindow()
+    {
+        var sut = new ReminderRules();
+        var reminder = new Reminder
+        {
+            Date = new DateOnly(2026, 10, 5),
+            Recurrence = RecurrenceType.Weekly,
+            RecurrenceWeekdays = DaysOfWeekFlags.Monday | DaysOfWeekFlags.Friday,
+        };
+
+        var dates = sut.GenerateOccurrenceDates(reminder, new DateOnly(2026, 10, 8), new DateOnly(2026, 10, 14)).ToList();
+
+        Assert.Equal([new DateOnly(2026, 10, 9), new DateOnly(2026, 10, 12)], dates);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(DaysOfWeekFlags.None)]
+    public void GenerateOccurrenceDates_WeeklyWithNoWeekdaySet_FallsBackToPlainWeeklyBehavior(DaysOfWeekFlags? weekdays)
+    {
+        var sut = new ReminderRules();
+        var reminder = new Reminder { Date = new DateOnly(2026, 10, 5), Recurrence = RecurrenceType.Weekly, RecurrenceWeekdays = weekdays };
+
+        var dates = sut.GenerateOccurrenceDates(reminder, new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 20)).ToList();
+
+        Assert.Equal([new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 12), new DateOnly(2026, 10, 19)], dates);
+    }
+
+    [Fact]
+    public void GenerateOccurrenceDates_MonthlyRecurrence_IgnoresRecurrenceWeekdays()
+    {
+        // RecurrenceWeekdays only applies to Weekly; a Monthly reminder shouldn't be affected
+        // even if the field is somehow set.
+        var sut = new ReminderRules();
+        var reminder = new Reminder
+        {
+            Date = new DateOnly(2026, 10, 5),
+            Recurrence = RecurrenceType.Monthly,
+            RecurrenceWeekdays = DaysOfWeekFlags.Monday,
+        };
+
+        var dates = sut.GenerateOccurrenceDates(reminder, new DateOnly(2026, 10, 1), new DateOnly(2026, 12, 31)).ToList();
+
+        Assert.Equal([new DateOnly(2026, 10, 5), new DateOnly(2026, 11, 5), new DateOnly(2026, 12, 5)], dates);
+    }
+
+    [Fact]
     public void MarkShown_SetsTheCorrespondingFlag()
     {
         var sut = new ReminderRules();

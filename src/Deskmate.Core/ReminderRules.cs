@@ -23,9 +23,25 @@ public class ReminderRules
             yield break;
         }
 
+        var lastDate = reminder.RecurrenceEndDate is { } end && end < through ? end : through;
+
+        if (reminder.Recurrence == RecurrenceType.Weekly && reminder.RecurrenceWeekdays is { } weekdays && weekdays != DaysOfWeekFlags.None)
+        {
+            // Specific weekdays (e.g. Mon/Wed/Fri) aren't evenly spaced, so this walks day by
+            // day rather than jumping to the Nth occurrence the way the plain cases below do.
+            for (var day = reminder.Date; day <= lastDate; day = day.AddDays(1))
+            {
+                if (day >= from && weekdays.Contains(day.DayOfWeek))
+                {
+                    yield return day;
+                }
+            }
+
+            yield break;
+        }
+
         var occurrenceIndex = 0;
         var current = reminder.Date;
-        var lastDate = reminder.RecurrenceEndDate is { } end && end < through ? end : through;
 
         while (current <= lastDate)
         {

@@ -158,7 +158,7 @@ public class ReminderService(IDbContextFactory<DeskmateDbContext> dbContextFacto
 
         var existing = await db.Reminders
             .Where(r => r.Source == ReminderSource.IcsSubscription && r.ExternalId != null)
-            .Select(r => new SyncedReminderSnapshot(r.Id, r.ExternalId!, r.Title, r.Date, r.Time, r.Recurrence, r.RecurrenceEndDate))
+            .Select(r => new SyncedReminderSnapshot(r.Id, r.ExternalId!, r.Title, r.Date, r.Time, r.Recurrence, r.RecurrenceEndDate, r.RecurrenceWeekdays))
             .ToListAsync(cancellationToken);
 
         var plan = CalendarSyncPlanner.Plan(existing, incoming, windowStart);
@@ -172,6 +172,7 @@ public class ReminderService(IDbContextFactory<DeskmateDbContext> dbContextFacto
                 Time = calendarEvent.Time,
                 Recurrence = calendarEvent.Recurrence,
                 RecurrenceEndDate = calendarEvent.RecurrenceEndDate,
+                RecurrenceWeekdays = calendarEvent.RecurrenceWeekdays,
                 Source = ReminderSource.IcsSubscription,
                 ExternalId = calendarEvent.ExternalId,
             });
@@ -194,6 +195,7 @@ public class ReminderService(IDbContextFactory<DeskmateDbContext> dbContextFacto
                 reminder.Time = calendarEvent.Time;
                 reminder.Recurrence = calendarEvent.Recurrence;
                 reminder.RecurrenceEndDate = calendarEvent.RecurrenceEndDate;
+                reminder.RecurrenceWeekdays = calendarEvent.RecurrenceWeekdays;
             }
         }
 

@@ -7,7 +7,7 @@ namespace Deskmate.Core;
 /// <summary>A previously-synced reminder, as far as the planner needs to know about it.</summary>
 public sealed record SyncedReminderSnapshot(
     int ReminderId, string ExternalId, string Title, DateOnly Date, TimeOnly? Time,
-    RecurrenceType Recurrence, DateOnly? RecurrenceEndDate);
+    RecurrenceType Recurrence, DateOnly? RecurrenceEndDate, DaysOfWeekFlags? RecurrenceWeekdays);
 
 public sealed record CalendarSyncPlan(
     IReadOnlyList<CalendarEvent> ToAdd,
@@ -42,7 +42,8 @@ public static class CalendarSyncPlanner
                 toAdd.Add(calendarEvent);
             }
             else if (reminder.Title != calendarEvent.Title || reminder.Date != calendarEvent.Date || reminder.Time != calendarEvent.Time
-                || reminder.Recurrence != calendarEvent.Recurrence || reminder.RecurrenceEndDate != calendarEvent.RecurrenceEndDate)
+                || reminder.Recurrence != calendarEvent.Recurrence || reminder.RecurrenceEndDate != calendarEvent.RecurrenceEndDate
+                || reminder.RecurrenceWeekdays != calendarEvent.RecurrenceWeekdays)
             {
                 toUpdate.Add((reminder.ReminderId, calendarEvent));
             }
