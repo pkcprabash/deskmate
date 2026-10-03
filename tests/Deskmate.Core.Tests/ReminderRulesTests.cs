@@ -310,6 +310,113 @@ public class ReminderRulesTests
     }
 
     [Fact]
+    public void GenerateOccurrenceDates_MonthlyOrdinalWeekday_ReturnsTheNthWeekdayEachMonth()
+    {
+        var sut = new ReminderRules();
+        var reminder = new Reminder
+        {
+            Date = new DateOnly(2026, 10, 15), // the 3rd Thursday of October
+            Recurrence = RecurrenceType.Monthly,
+            RecurrenceOrdinal = 3,
+            RecurrenceWeekdays = DaysOfWeekFlags.Thursday,
+        };
+
+        var dates = sut.GenerateOccurrenceDates(reminder, new DateOnly(2026, 10, 1), new DateOnly(2026, 12, 31)).ToList();
+
+        Assert.Equal([new DateOnly(2026, 10, 15), new DateOnly(2026, 11, 19), new DateOnly(2026, 12, 17)], dates);
+    }
+
+    [Fact]
+    public void GenerateOccurrenceDates_MonthlyOrdinalWeekday_NegativeOrdinalCountsFromTheEnd()
+    {
+        var sut = new ReminderRules();
+        var reminder = new Reminder
+        {
+            Date = new DateOnly(2026, 10, 30), // the last Friday of October
+            Recurrence = RecurrenceType.Monthly,
+            RecurrenceOrdinal = -1,
+            RecurrenceWeekdays = DaysOfWeekFlags.Friday,
+        };
+
+        var dates = sut.GenerateOccurrenceDates(reminder, new DateOnly(2026, 10, 1), new DateOnly(2026, 11, 30)).ToList();
+
+        Assert.Equal([new DateOnly(2026, 10, 30), new DateOnly(2026, 11, 27)], dates);
+    }
+
+    [Fact]
+    public void GenerateOccurrenceDates_MonthlyOrdinalWeekday_SkipsMonthsWhereTheOrdinalDoesNotExist()
+    {
+        var sut = new ReminderRules();
+        var reminder = new Reminder
+        {
+            Date = new DateOnly(2026, 10, 29), // the 5th Thursday of October (October has five)
+            Recurrence = RecurrenceType.Monthly,
+            RecurrenceOrdinal = 5,
+            RecurrenceWeekdays = DaysOfWeekFlags.Thursday,
+        };
+
+        // November has only four Thursdays, so it's skipped; December has five again.
+        var dates = sut.GenerateOccurrenceDates(reminder, new DateOnly(2026, 10, 1), new DateOnly(2026, 12, 31)).ToList();
+
+        Assert.Equal([new DateOnly(2026, 10, 29), new DateOnly(2026, 12, 31)], dates);
+    }
+
+    [Fact]
+    public void GenerateOccurrenceDates_YearlyOrdinalWeekday_RecursOnTheSameMonthEachYear()
+    {
+        // "4th Thursday of November" — the classic Thanksgiving-style yearly recurrence.
+        var sut = new ReminderRules();
+        var reminder = new Reminder
+        {
+            Date = new DateOnly(2026, 11, 26),
+            Recurrence = RecurrenceType.Yearly,
+            RecurrenceOrdinal = 4,
+            RecurrenceWeekdays = DaysOfWeekFlags.Thursday,
+        };
+
+        var dates = sut.GenerateOccurrenceDates(reminder, new DateOnly(2026, 1, 1), new DateOnly(2027, 12, 31)).ToList();
+
+        Assert.Equal([new DateOnly(2026, 11, 26), new DateOnly(2027, 11, 25)], dates);
+    }
+
+    [Fact]
+    public void GenerateOccurrenceDates_MonthlyOrdinalWeekday_RespectsRecurrenceEndDate()
+    {
+        var sut = new ReminderRules();
+        var reminder = new Reminder
+        {
+            Date = new DateOnly(2026, 10, 15),
+            Recurrence = RecurrenceType.Monthly,
+            RecurrenceOrdinal = 3,
+            RecurrenceWeekdays = DaysOfWeekFlags.Thursday,
+            RecurrenceEndDate = new DateOnly(2026, 11, 19),
+        };
+
+        var dates = sut.GenerateOccurrenceDates(reminder, new DateOnly(2026, 10, 1), new DateOnly(2027, 1, 1)).ToList();
+
+        Assert.Equal([new DateOnly(2026, 10, 15), new DateOnly(2026, 11, 19)], dates);
+    }
+
+    [Fact]
+    public void GenerateOccurrenceDates_MonthlyWithoutOrdinal_IgnoresRecurrenceWeekdays()
+    {
+        // RecurrenceWeekdays without RecurrenceOrdinal shouldn't trigger the ordinal path —
+        // plain Monthly (same day-of-month) still applies.
+        var sut = new ReminderRules();
+        var reminder = new Reminder
+        {
+            Date = new DateOnly(2026, 10, 15),
+            Recurrence = RecurrenceType.Monthly,
+            RecurrenceWeekdays = DaysOfWeekFlags.Thursday,
+            RecurrenceOrdinal = null,
+        };
+
+        var dates = sut.GenerateOccurrenceDates(reminder, new DateOnly(2026, 10, 1), new DateOnly(2026, 12, 31)).ToList();
+
+        Assert.Equal([new DateOnly(2026, 10, 15), new DateOnly(2026, 11, 15), new DateOnly(2026, 12, 15)], dates);
+    }
+
+    [Fact]
     public void MarkShown_SetsTheCorrespondingFlag()
     {
         var sut = new ReminderRules();

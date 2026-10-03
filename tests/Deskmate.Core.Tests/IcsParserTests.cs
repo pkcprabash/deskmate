@@ -179,11 +179,15 @@ public class IcsParserTests
 
     [Theory]
     [InlineData("FREQ=WEEKLY;INTERVAL=2;COUNT=5")] // every other week: interval != 1
-    [InlineData("FREQ=MONTHLY;BYDAY=3TH")] // ordinal BYDAY ("3rd Thursday"): a different recurrence shape
-    [InlineData("FREQ=YEARLY;BYDAY=1MO")]
-    [InlineData("FREQ=WEEKLY;BYDAY=1MO,WE")] // an ordinal prefix isn't valid for WEEKLY either
+    [InlineData("FREQ=WEEKLY;BYDAY=1MO,WE")] // an ordinal prefix isn't valid for WEEKLY
     [InlineData("FREQ=WEEKLY;BYDAY=XX")] // not a real weekday code
     [InlineData("FREQ=WEEKLY;BYDAY=")] // empty BYDAY
+    [InlineData("FREQ=MONTHLY;BYDAY=1MO,3MO")] // multiple ordinal/weekday pairs: unsupported
+    [InlineData("FREQ=MONTHLY;BYDAY=MO")] // a weekday with no ordinal prefix, on MONTHLY
+    [InlineData("FREQ=MONTHLY;BYDAY=0TH")] // ordinal 0 isn't valid RRULE syntax
+    [InlineData("FREQ=MONTHLY;BYDAY=6TH")] // out of the realistic 1-5 range
+    [InlineData("FREQ=MONTHLY;BYDAY=3XX")] // not a real weekday code
+    [InlineData("FREQ=DAILY;BYDAY=MO")] // BYDAY on DAILY isn't a recognized shape
     [InlineData("FREQ=MONTHLY;BYMONTHDAY=15")] // a specific day of the month
     [InlineData("FREQ=YEARLY;BYMONTH=12")]
     [InlineData("FREQ=DAILY;COUNT=5;UNTIL=20261010")] // COUNT and UNTIL together: malformed per RFC 5545
@@ -277,6 +281,108 @@ public class IcsParserTests
 
         var evt = Assert.Single(IcsParser.Parse(ics));
 
+        Assert.Null(evt.RecurrenceWeekdays);
+    }
+
+    [Fact]
+    public void Parse_MonthlyOrdinalByDay_SetsOrdinalAndWeekday()
+    {
+        // October 15, 2026 is the 3rd Thursday of the month.
+        var ics = Wrap("UID:ordinal-1\nSUMMARY:Board meeting\nDTSTART;VALUE=DATE:20261015\nRRULE:FREQ=MONTHLY;BYDAY=3TH");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Equal(RecurrenceType.Monthly, evt.Recurrence);
+        Assert.Equal(3, evt.RecurrenceOrdinal);
+        Assert.Equal(DaysOfWeekFlags.Thursday, evt.RecurrenceWeekdays);
+        Assert.Null(evt.RecurrenceEndDate);
+    }
+
+    [Fact]
+    public void Parse_NegativeOrdinalByDay_MeansCountingFromTheEnd()
+    {
+        // October 30, 2026 is the last Friday of the month.
+        var ics = Wrap("UID:ordinal-2\nSUMMARY:Game night\nDTSTART;VALUE=DATE:20261030\nRRULE:FREQ=MONTHLY;BYDAY=-1FR");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Equal(-1, evt.RecurrenceOrdinal);
+        Assert.Equal(DaysOfWeekFlags.Friday, evt.RecurrenceWeekdays);
+    }
+
+    [Fact]
+    public void Parse_YearlyOrdinalByDay_IsSupported()
+    {
+        // November 26, 2026 is the 4th Thursday of November — Thanksgiving-style.
+        var ics = Wrap("UID:ordinal-3\nSUMMARY:Thanksgiving\nDTSTART;VALUE=DATE:20261126\nRRULE:FREQ=YEARLY;BYDAY=4TH");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Equal(RecurrenceType.Yearly, evt.Recurrence);
+        Assert.Equal(4, evt.RecurrenceOrdinal);
+        Assert.Equal(DaysOfWeekFlags.Thursday, evt.RecurrenceWeekdays);
+    }
+
+    [Fact]
+    public void Parse_MonthlyOrdinalByDay_IsCaseInsensitive()
+    {
+        var ics = Wrap("UID:ordinal-4\nSUMMARY:Board meeting\nDTSTART;VALUE=DATE:20261015\nRRULE:FREQ=MONTHLY;BYDAY=3th");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Equal(DaysOfWeekFlags.Thursday, evt.RecurrenceWeekdays);
+    }
+
+    [Fact]
+    public void Parse_MonthlyOrdinalByDay_WithCount_SetsRecurrenceEndDateToTheNthOccurrence()
+    {
+        // 3rd Thursday: Oct 15, Nov 19, Dec 17 2026 -> the 3rd one is Dec 17.
+        var ics = Wrap("UID:ordinal-5\nSUMMARY:Board meeting\nDTSTART;VALUE=DATE:20261015\nRRULE:FREQ=MONTHLY;BYDAY=3TH;COUNT=3");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Equal(new DateOnly(2026, 12, 17), evt.RecurrenceEndDate);
+    }
+
+    [Fact]
+    public void Parse_YearlyOrdinalByDay_WithCount_SetsRecurrenceEndDateToTheNthYear()
+    {
+        // 4th Thursday of November: 2026-11-26, then 2027-11-25.
+        var ics = Wrap("UID:ordinal-6\nSUMMARY:Thanksgiving\nDTSTART;VALUE=DATE:20261126\nRRULE:FREQ=YEARLY;BYDAY=4TH;COUNT=2");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Equal(new DateOnly(2027, 11, 25), evt.RecurrenceEndDate);
+    }
+
+    [Fact]
+    public void Parse_MonthlyOrdinalByDay_WithUntil_SetsRecurrenceEndDate()
+    {
+        var ics = Wrap("UID:ordinal-7\nSUMMARY:Board meeting\nDTSTART;VALUE=DATE:20261015\nRRULE:FREQ=MONTHLY;BYDAY=3TH;UNTIL=20261231");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Equal(new DateOnly(2026, 12, 31), evt.RecurrenceEndDate);
+    }
+
+    [Fact]
+    public void Parse_WeeklyByDay_LeavesRecurrenceOrdinalNull()
+    {
+        var ics = Wrap("UID:ordinal-8\nSUMMARY:Standup\nDTSTART;VALUE=DATE:20261005\nRRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Null(evt.RecurrenceOrdinal);
+    }
+
+    [Fact]
+    public void Parse_PlainMonthlyRRule_LeavesRecurrenceOrdinalNull()
+    {
+        var ics = Wrap("UID:ordinal-9\nSUMMARY:Rent due\nDTSTART;VALUE=DATE:20261015\nRRULE:FREQ=MONTHLY;COUNT=3");
+
+        var evt = Assert.Single(IcsParser.Parse(ics));
+
+        Assert.Null(evt.RecurrenceOrdinal);
         Assert.Null(evt.RecurrenceWeekdays);
     }
 

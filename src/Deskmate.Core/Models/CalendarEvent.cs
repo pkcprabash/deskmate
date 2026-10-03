@@ -15,4 +15,5 @@ public sealed record CalendarEvent(
     TimeOnly? Time,
     RecurrenceType Recurrence = RecurrenceType.None,
     DateOnly? RecurrenceEndDate = null,
-    DaysOfWeekFlags? RecurrenceWeekdays = null);
+    DaysOfWeekFlags? RecurrenceWeekdays = null,
+    int? RecurrenceOrdinal = null);

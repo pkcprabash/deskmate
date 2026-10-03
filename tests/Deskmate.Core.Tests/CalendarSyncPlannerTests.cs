@@ -12,14 +12,14 @@ public class CalendarSyncPlannerTests
     private static CalendarEvent Event(
         string id, string title, DateOnly date, TimeOnly? time = null,
         RecurrenceType recurrence = RecurrenceType.None, DateOnly? recurrenceEndDate = null,
-        DaysOfWeekFlags? recurrenceWeekdays = null) =>
-        new(id, title, date, time, recurrence, recurrenceEndDate, recurrenceWeekdays);
+        DaysOfWeekFlags? recurrenceWeekdays = null, int? recurrenceOrdinal = null) =>
+        new(id, title, date, time, recurrence, recurrenceEndDate, recurrenceWeekdays, recurrenceOrdinal);
 
     private static SyncedReminderSnapshot Snapshot(
         int reminderId, string externalId, string title, DateOnly date, TimeOnly? time = null,
         RecurrenceType recurrence = RecurrenceType.None, DateOnly? recurrenceEndDate = null,
-        DaysOfWeekFlags? recurrenceWeekdays = null) =>
-        new(reminderId, externalId, title, date, time, recurrence, recurrenceEndDate, recurrenceWeekdays);
+        DaysOfWeekFlags? recurrenceWeekdays = null, int? recurrenceOrdinal = null) =>
+        new(reminderId, externalId, title, date, time, recurrence, recurrenceEndDate, recurrenceWeekdays, recurrenceOrdinal);
 
     [Fact]
     public void Plan_NewEvent_IsAdded()
@@ -195,6 +195,28 @@ public class CalendarSyncPlannerTests
         var plan = CalendarSyncPlanner.Plan(
             existing: [Snapshot(1, "evt-1", "Standup", Today, recurrence: RecurrenceType.Weekly, recurrenceWeekdays: DaysOfWeekFlags.Monday)],
             incoming: [Event("evt-1", "Standup", Today, recurrence: RecurrenceType.Weekly, recurrenceWeekdays: DaysOfWeekFlags.Monday)],
+            windowStart: Today);
+
+        Assert.Empty(plan.ToUpdate);
+    }
+
+    [Fact]
+    public void Plan_RecurrenceOrdinalChanged_IsUpdated()
+    {
+        var plan = CalendarSyncPlanner.Plan(
+            existing: [Snapshot(1, "evt-1", "Board meeting", Today, recurrence: RecurrenceType.Monthly, recurrenceWeekdays: DaysOfWeekFlags.Thursday, recurrenceOrdinal: 3)],
+            incoming: [Event("evt-1", "Board meeting", Today, recurrence: RecurrenceType.Monthly, recurrenceWeekdays: DaysOfWeekFlags.Thursday, recurrenceOrdinal: -1)],
+            windowStart: Today);
+
+        Assert.Single(plan.ToUpdate);
+    }
+
+    [Fact]
+    public void Plan_UnchangedRecurrenceOrdinal_IsNotUpdated()
+    {
+        var plan = CalendarSyncPlanner.Plan(
+            existing: [Snapshot(1, "evt-1", "Board meeting", Today, recurrence: RecurrenceType.Monthly, recurrenceWeekdays: DaysOfWeekFlags.Thursday, recurrenceOrdinal: 3)],
+            incoming: [Event("evt-1", "Board meeting", Today, recurrence: RecurrenceType.Monthly, recurrenceWeekdays: DaysOfWeekFlags.Thursday, recurrenceOrdinal: 3)],
             windowStart: Today);
 
         Assert.Empty(plan.ToUpdate);

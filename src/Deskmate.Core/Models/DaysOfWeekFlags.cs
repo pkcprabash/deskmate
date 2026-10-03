@@ -31,4 +31,19 @@ public static class DaysOfWeekFlagsExtensions
     };
 
     public static bool Contains(this DaysOfWeekFlags flags, DayOfWeek day) => (flags & day.ToFlag()) != 0;
+
+    /// <summary>The single weekday a one-bit set represents, for the "ordinal weekday" recurrence
+    /// case (e.g. "the 3rd Thursday"), where exactly one weekday is meaningful. Null if
+    /// <paramref name="flags"/> is empty or has more than one bit set.</summary>
+    public static DayOfWeek? ToSingleDayOfWeek(this DaysOfWeekFlags flags) => flags switch
+    {
+        DaysOfWeekFlags.Monday => DayOfWeek.Monday,
+        DaysOfWeekFlags.Tuesday => DayOfWeek.Tuesday,
+        DaysOfWeekFlags.Wednesday => DayOfWeek.Wednesday,
+        DaysOfWeekFlags.Thursday => DayOfWeek.Thursday,
+        DaysOfWeekFlags.Friday => DayOfWeek.Friday,
+        DaysOfWeekFlags.Saturday => DayOfWeek.Saturday,
+        DaysOfWeekFlags.Sunday => DayOfWeek.Sunday,
+        _ => null, // None, or more than one bit set
+    };
 }

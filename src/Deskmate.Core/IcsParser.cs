@@ -14,9 +14,10 @@ namespace Deskmate.Core;
 ///
 /// Known, deliberate limitations:
 /// - Only FREQ=DAILY/WEEKLY/MONTHLY/YEARLY at interval 1, with an optional COUNT or UNTIL, are
-///   expanded — plus, for WEEKLY only, a plain BYDAY list of weekdays ("every Mon/Wed/Fri").
-///   An ordinal BYDAY ("the 3rd Thursday"), an interval other than 1, or any other rule part is
-///   left alone, since getting a date wrong is worse than skipping the event entirely.
+///   expanded — plus a BYDAY: for WEEKLY, a plain list of weekdays ("every Mon/Wed/Fri"); for
+///   MONTHLY/YEARLY, a single ordinal+weekday pair ("the 3rd Thursday", "the last Friday").
+///   Multiple ordinal/weekday pairs, an interval other than 1, or any other rule part is left
+///   alone, since getting a date wrong is worse than skipping the event entirely.
 /// - A DTSTART with an explicit UTC "Z" suffix is converted to local time; a "floating" local
 ///   date-time (no "Z") is read as its literal wall-clock value — any TZID parameter is not
 ///   resolved. Correct for the common case (the feed already in the viewer's zone); can be
@@ -148,14 +149,15 @@ public static class IcsParser
         var recurrence = RecurrenceType.None;
         DateOnly? recurrenceEndDate = null;
         DaysOfWeekFlags? weekdays = null;
+        int? ordinal = null;
 
-        if (rruleValue is not null && !TryParseRRule(rruleValue, date, out recurrence, out recurrenceEndDate, out weekdays))
+        if (rruleValue is not null && !TryParseRRule(rruleValue, date, out recurrence, out recurrenceEndDate, out weekdays, out ordinal))
         {
             return false;
         }
 
         var title = string.IsNullOrWhiteSpace(summary) ? "(untitled event)" : summary;
-        calendarEvent = new CalendarEvent(uid, title, date, time, recurrence, recurrenceEndDate, weekdays);
+        calendarEvent = new CalendarEvent(uid, title, date, time, recurrence, recurrenceEndDate, weekdays, ordinal);
         return true;
     }
 
@@ -180,11 +182,12 @@ public static class IcsParser
     /// </summary>
     private static bool TryParseRRule(
         string rruleValue, DateOnly dtStartDate,
-        out RecurrenceType recurrence, out DateOnly? recurrenceEndDate, out DaysOfWeekFlags? weekdays)
+        out RecurrenceType recurrence, out DateOnly? recurrenceEndDate, out DaysOfWeekFlags? weekdays, out int? ordinal)
     {
         recurrence = RecurrenceType.None;
         recurrenceEndDate = null;
         weekdays = null;
+        ordinal = null;
 
         var parts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var part in rruleValue.Split(';', StringSplitOptions.RemoveEmptyEntries))
@@ -232,12 +235,30 @@ public static class IcsParser
 
         if (parts.TryGetValue("BYDAY", out var byDayText))
         {
-            // BYDAY only means plain weekdays (no "1MO"/"-1FR" ordinal prefix) for WEEKLY; an
-            // ordinal BYDAY on MONTHLY/YEARLY ("the 3rd Thursday") is a different, unsupported
-            // recurrence shape.
-            if (recurrence != RecurrenceType.Weekly || !TryParseByDay(byDayText, out weekdays))
+            if (recurrence == RecurrenceType.Weekly)
             {
-                return false;
+                // Plain weekdays only (no "1MO"/"-1FR" ordinal prefix) — WeekdayCodes won't
+                // match a prefixed token, so that case is already rejected here naturally.
+                if (!TryParseByDay(byDayText, out weekdays))
+                {
+                    return false;
+                }
+            }
+            else if (recurrence is RecurrenceType.Monthly or RecurrenceType.Yearly)
+            {
+                // "The 3rd Thursday" / "the last Friday": exactly one ordinal+weekday pair.
+                // Multiple pairs (e.g. "1MO,3MO") are a different, unsupported shape.
+                if (!TryParseOrdinalByDay(byDayText, out var parsedOrdinal, out var parsedWeekday))
+                {
+                    return false;
+                }
+
+                ordinal = parsedOrdinal;
+                weekdays = parsedWeekday;
+            }
+            else
+            {
+                return false; // BYDAY on Daily isn't a recognized shape
             }
         }
 
@@ -256,9 +277,11 @@ public static class IcsParser
                 return false;
             }
 
-            recurrenceEndDate = weekdays is { } set && set != DaysOfWeekFlags.None
-                ? NthWeekdayOccurrence(dtStartDate, set, count)
-                : RecurrenceStep.NthOccurrence(dtStartDate, recurrence, count - 1);
+            recurrenceEndDate = ordinal is { } ord && weekdays?.ToSingleDayOfWeek() is { } ordWeekday
+                ? NthOrdinalWeekdayOccurrence(dtStartDate, recurrence, ord, ordWeekday, count)
+                : weekdays is { } set && set != DaysOfWeekFlags.None
+                    ? NthWeekdayOccurrence(dtStartDate, set, count)
+                    : RecurrenceStep.NthOccurrence(dtStartDate, recurrence, count - 1);
         }
         else if (hasUntil)
         {
@@ -298,6 +321,34 @@ public static class IcsParser
         return true;
     }
 
+    /// <summary>BYDAY's value for a MONTHLY/YEARLY ordinal rule: exactly one "&lt;ordinal&gt;&lt;weekday&gt;" token, e.g. "3TH" or "-1FR".</summary>
+    private static bool TryParseOrdinalByDay(string byDayValue, out int ordinal, out DaysOfWeekFlags weekday)
+    {
+        ordinal = 0;
+        weekday = DaysOfWeekFlags.None;
+
+        var tokens = byDayValue.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        if (tokens.Length != 1)
+        {
+            return false; // multiple ordinal/weekday pairs (e.g. "1MO,3MO") aren't supported
+        }
+
+        var token = tokens[0].Trim();
+        if (token.Length < 3 || !WeekdayCodes.TryGetValue(token[^2..], out var flag))
+        {
+            return false;
+        }
+
+        if (!int.TryParse(token[..^2], out var parsedOrdinal) || parsedOrdinal == 0 || Math.Abs(parsedOrdinal) > 5)
+        {
+            return false;
+        }
+
+        ordinal = parsedOrdinal;
+        weekday = flag;
+        return true;
+    }
+
     /// <summary>The date of the Nth (1-based) occurrence of a weekday-filtered weekly recurrence, counting <paramref name="start"/>'s own date as the first if it matches.</summary>
     private static DateOnly NthWeekdayOccurrence(DateOnly start, DaysOfWeekFlags weekdays, int count)
     {
@@ -319,6 +370,48 @@ public static class IcsParser
         }
 
         return day;
+    }
+
+    /// <summary>The date of the Nth (1-based) occurrence of an ordinal-weekday recurrence ("3rd Thursday of every month/year"), walking month by month (Monthly) or year by year (Yearly).</summary>
+    private static DateOnly NthOrdinalWeekdayOccurrence(DateOnly start, RecurrenceType recurrence, int ordinal, DayOfWeek weekday, int count)
+    {
+        var matched = 0;
+        var year = start.Year;
+        var month = start.Month;
+        var lastMatch = start;
+
+        // A generous bound: an ordinal up to ±4 exists every single month/year, so this only
+        // needs real headroom for the rare ±5 case, which still recurs several times a year.
+        var maxIterations = recurrence == RecurrenceType.Yearly ? count * 6 + 30 : count * 2 + 24;
+
+        for (var i = 0; i < maxIterations; i++)
+        {
+            if (RecurrenceStep.NthWeekdayOfMonth(year, month, weekday, ordinal) is { } date)
+            {
+                matched++;
+                lastMatch = date;
+                if (matched == count)
+                {
+                    return date;
+                }
+            }
+
+            if (recurrence == RecurrenceType.Yearly)
+            {
+                year++;
+            }
+            else if (month == 12)
+            {
+                month = 1;
+                year++;
+            }
+            else
+            {
+                month++;
+            }
+        }
+
+        return lastMatch; // Should be unreachable given the bound above; a safe fallback if it's ever wrong.
     }
 
     private static bool TryParseDtStart(string propertyName, string value, out DateOnly date, out TimeOnly? time)

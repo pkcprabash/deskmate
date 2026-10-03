@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Calendar sync now also expands monthly/yearly events on an ordinal weekday ("the 3rd Thursday of the month", "the last Friday", Thanksgiving-style yearly anniversaries) into recurring reminders.
+
 - Calendar sync now also expands weekly recurring events on specific weekdays ("every Mon/Wed/Fri"), not just plain weekly/daily/monthly/yearly; reminders gained an optional weekday set alongside the existing recurrence end date.
 
 - Calendar sync now expands simple recurring events (daily/weekly/monthly/yearly, with an optional end date or count) into recurring reminders, instead of skipping every recurring event; reminders also gained an optional recurrence end date.

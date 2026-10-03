@@ -40,6 +40,18 @@ public class ReminderRules
             yield break;
         }
 
+        if ((reminder.Recurrence == RecurrenceType.Monthly || reminder.Recurrence == RecurrenceType.Yearly)
+            && reminder.RecurrenceOrdinal is { } ordinal && reminder.RecurrenceWeekdays is { } ordinalWeekday
+            && ordinalWeekday != DaysOfWeekFlags.None)
+        {
+            foreach (var date in GenerateOrdinalWeekdayDates(reminder, ordinal, ordinalWeekday, from, lastDate))
+            {
+                yield return date;
+            }
+
+            yield break;
+        }
+
         var occurrenceIndex = 0;
         var current = reminder.Date;
 
@@ -54,6 +66,43 @@ public class ReminderRules
             current = reminder.Recurrence == RecurrenceType.None
                 ? through.AddDays(1) // unreachable in practice (None returns early above); guards the loop if it ever isn't
                 : RecurrenceStep.NthOccurrence(reminder.Date, reminder.Recurrence, occurrenceIndex);
+        }
+    }
+
+    /// <summary>"The 3rd Thursday of every month" (Monthly) or "...of every [Date's month]" (Yearly).
+    /// Walks month by month (or year by year), since unlike the plain cases this isn't a fixed offset.</summary>
+    private static IEnumerable<DateOnly> GenerateOrdinalWeekdayDates(
+        Reminder reminder, int ordinal, DaysOfWeekFlags weekdaySet, DateOnly from, DateOnly lastDate)
+    {
+        if (weekdaySet.ToSingleDayOfWeek() is not { } weekday || ordinal == 0)
+        {
+            yield break;
+        }
+
+        var year = reminder.Date.Year;
+        var month = reminder.Date.Month;
+
+        while (new DateOnly(year, month, 1) <= lastDate)
+        {
+            if (RecurrenceStep.NthWeekdayOfMonth(year, month, weekday, ordinal) is { } date
+                && date >= reminder.Date && date >= from && date <= lastDate)
+            {
+                yield return date;
+            }
+
+            if (reminder.Recurrence == RecurrenceType.Yearly)
+            {
+                year++;
+            }
+            else if (month == 12)
+            {
+                month = 1;
+                year++;
+            }
+            else
+            {
+                month++;
+            }
         }
     }
 
