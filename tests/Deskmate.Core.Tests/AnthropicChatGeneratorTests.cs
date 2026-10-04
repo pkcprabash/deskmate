@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Deskmate.Core.Models;
 using Deskmate.Infrastructure.AiMessages;
@@ -7,8 +8,10 @@ namespace Deskmate.Core.Tests;
 
 public class AnthropicChatGeneratorTests
 {
-    private static AiChatRequest Request(string currentFocus = "", string userMessage = "How's it going?") => new(
-        AvatarName: "Pixel", UserName: "Alex", Tone: MessageTone.Cheerful, CurrentFocus: currentFocus, UserMessage: userMessage);
+    private static AiChatRequest Request(
+        string currentFocus = "", string userMessage = "How's it going?", IReadOnlyList<ChatMessage>? history = null) => new(
+        AvatarName: "Pixel", UserName: "Alex", Tone: MessageTone.Cheerful, CurrentFocus: currentFocus,
+        UserMessage: userMessage, History: history ?? []);
 
     [Fact]
     public void SystemPrompt_NamesTheAvatarAndUser()
@@ -64,6 +67,17 @@ public class AnthropicChatGeneratorTests
         var sut = new AnthropicChatGenerator(NullLogger<AnthropicChatGenerator>.Instance);
 
         var result = await sut.ReplyAsync(Request(userMessage: "   "), apiKey: "key", model: "claude-haiku-4-5");
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task ReplyAsync_NoApiKey_WithHistory_ReturnsNullWithoutCallingTheNetwork()
+    {
+        var sut = new AnthropicChatGenerator(NullLogger<AnthropicChatGenerator>.Instance);
+        var history = new[] { new ChatMessage(ChatRole.User, "Hey"), new ChatMessage(ChatRole.Avatar, "Hi there!") };
+
+        var result = await sut.ReplyAsync(Request(history: history), apiKey: null, model: "claude-haiku-4-5");
 
         Assert.Null(result);
     }

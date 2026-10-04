@@ -35,7 +35,15 @@ public sealed class AnthropicChatGenerator(ILogger<AnthropicChatGenerator> logge
                 Model = string.IsNullOrWhiteSpace(model) ? "claude-haiku-4-5" : model,
                 MaxTokens = 300,
                 System = BuildSystemPrompt(request),
-                Messages = [new() { Role = Role.User, Content = request.UserMessage }],
+                Messages =
+                [
+                    ..request.History.Select(m => new MessageParam
+                    {
+                        Role = m.Role == ChatRole.User ? Role.User : Role.Assistant,
+                        Content = m.Text,
+                    }),
+                    new() { Role = Role.User, Content = request.UserMessage },
+                ],
             };
 
             using var timeoutCts = new CancellationTokenSource(RequestTimeout);

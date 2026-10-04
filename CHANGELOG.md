@@ -2,10 +2,12 @@
 
 ## Unreleased
 
+- Chat now remembers the last 20 messages of the open conversation, so follow-up questions and
+  references to earlier turns actually land, instead of each reply being answered in isolation.
+
 - Chat (quick menu > Chat…, or press C): talk to the avatar directly and get a Claude-written
   reply, using the same Anthropic API key/model as AI messages and your "About me" context.
-  Each reply is currently independent — the avatar doesn't yet remember earlier turns in the
-  conversation. Disabled with an explanatory note when AI messages aren't configured.
+  Disabled with an explanatory note when AI messages aren't configured.
 
 - Calendar sync now also expands monthly/yearly events on an ordinal weekday ("the 3rd Thursday of the month", "the last Friday", Thanksgiving-style yearly anniversaries) into recurring reminders.
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -24,9 +25,13 @@ public partial class ChatWindow : Window
     private static readonly IBrush UserBubbleBrush = new SolidColorBrush(Color.FromArgb(0x33, 0x40, 0xA0, 0xFF));
     private static readonly IBrush AvatarBubbleBrush = new SolidColorBrush(Color.FromArgb(0x22, 0x80, 0x80, 0x80));
 
+    /// <summary>How many prior messages (not turns) are sent as context with each new one.</summary>
+    private const int MaxHistoryMessages = 20;
+
     public required SettingsService SettingsService { get; init; }
     public required IAiChatGenerator ChatGenerator { get; init; }
 
+    private readonly List<ChatMessage> _history = [];
     private string _avatarName = "";
     private string _userName = "";
     private MessageTone _tone = MessageTone.Cheerful;
@@ -87,22 +92,36 @@ public partial class ChatWindow : Window
 
         InputTextBox.Text = "";
         AppendMessage(ChatRole.User, text);
+        var historyForRequest = _history.ToArray();
+        RememberMessage(new ChatMessage(ChatRole.User, text));
 
         _awaitingReply = true;
         InputTextBox.IsEnabled = false;
         SendButton.IsEnabled = false;
         var thinkingBubble = AppendMessage(ChatRole.Avatar, "…");
 
-        var request = new AiChatRequest(_avatarName, _userName, _tone, _currentFocus, text);
+        var request = new AiChatRequest(_avatarName, _userName, _tone, _currentFocus, text, historyForRequest);
         var reply = await ChatGenerator.ReplyAsync(request, _apiKey, _model);
+        var replyText = reply ?? "Sorry, I couldn't think of a reply just now.";
 
         MessagesPanel.Children.Remove(thinkingBubble);
-        AppendMessage(ChatRole.Avatar, reply ?? "Sorry, I couldn't think of a reply just now.");
+        AppendMessage(ChatRole.Avatar, replyText);
+        RememberMessage(new ChatMessage(ChatRole.Avatar, replyText));
 
         _awaitingReply = false;
         InputTextBox.IsEnabled = true;
         SendButton.IsEnabled = true;
         InputTextBox.Focus();
+    }
+
+    /// <summary>Keeps only the most recent messages, so a long-running chat doesn't send an ever-growing prompt.</summary>
+    private void RememberMessage(ChatMessage message)
+    {
+        _history.Add(message);
+        if (_history.Count > MaxHistoryMessages)
+        {
+            _history.RemoveAt(0);
+        }
     }
 
     private Border AppendMessage(ChatRole role, string text)
