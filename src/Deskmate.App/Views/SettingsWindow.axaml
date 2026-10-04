@@ -109,7 +109,7 @@
             <TabItem Header="_AI messages">
                 <StackPanel Spacing="10" Margin="8">
                     <TextBlock TextWrapping="Wrap"
-                               Text="Let Claude rewrite the avatar's greetings, break nudges, and focus-session messages using your own Anthropic API key. Off by default; your key is stored only in this app's local database and is sent to no one but api.anthropic.com." />
+                               Text="Let Claude rewrite the avatar's greetings, break nudges, and focus-session messages, and power the Chat window (quick menu &gt; Chat…), using your own Anthropic API key. Off by default; your key is stored only in this app's local database and is sent to no one but api.anthropic.com." />
                     <CheckBox Name="AiMessagesEnabledCheckBox" Content="Enable AI messages" />
                     <StackPanel Spacing="4">
                         <TextBlock Text="Anthropic API key" />

@@ -79,6 +79,7 @@ public partial class App : Application
         var notificationService = Host!.Services.GetRequiredService<NotificationService>();
         var fullScreenDetector = Host!.Services.GetRequiredService<IFullScreenDetector>();
         var aiMessageGenerator = Host!.Services.GetRequiredService<IAiMessageGenerator>();
+        var aiChatGenerator = Host!.Services.GetRequiredService<IAiChatGenerator>();
         var calendarSyncService = Host!.Services.GetRequiredService<CalendarSyncService>();
 
         var window = new AvatarWindow
@@ -88,6 +89,7 @@ public partial class App : Application
             ReminderService = reminderService,
             CalendarSyncService = calendarSyncService,
             FullScreenDetector = fullScreenDetector,
+            ChatGenerator = aiChatGenerator,
             DataContext = new AvatarViewModel(
                 settingsService, avatarPackLoader, idleMonitor, sessionEventsMonitor,
                 reminderScheduler, reminderService, notificationService, aiMessageGenerator),

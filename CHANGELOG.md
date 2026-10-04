@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Chat (quick menu > Chat…, or press C): talk to the avatar directly and get a Claude-written
+  reply, using the same Anthropic API key/model as AI messages and your "About me" context.
+  Each reply is currently independent — the avatar doesn't yet remember earlier turns in the
+  conversation. Disabled with an explanatory note when AI messages aren't configured.
+
 - Calendar sync now also expands monthly/yearly events on an ordinal weekday ("the 3rd Thursday of the month", "the last Friday", Thanksgiving-style yearly anniversaries) into recurring reminders.
 
 - Calendar sync now also expands weekly recurring events on specific weekdays ("every Mon/Wed/Fri"), not just plain weekly/daily/monthly/yearly; reminders gained an optional weekday set alongside the existing recurrence end date.

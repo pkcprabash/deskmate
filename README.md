@@ -37,6 +37,14 @@ the default model is Claude Haiku 4.5, chosen for speed and cost on these short,
 messages, and is configurable. If the call is slow, fails, or is disabled, Deskmate falls back
 to its built-in phrasing — you'"'"'ll never see a blank message.
 
+## Chat (optional)
+
+Open the quick menu (double-click the avatar, or press Enter/C) and choose "Chat…" to talk to
+it directly. It uses the same Anthropic API key and model as AI messages above, plus your name,
+the avatar's name, your tone preference, and your current focus from Settings > About me. The
+conversation lives only in that window, for as long as it stays open; closing it clears it. If
+AI messages aren't turned on or configured, the chat window says so instead of accepting input.
+
 ## Platforms
 
 Deskmate runs on Windows, macOS, and Linux (X11 or XWayland). A few OS-specific behaviors:

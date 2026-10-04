@@ -31,6 +31,7 @@ public static class AppHost
                 services.AddSingleton<IdleMonitor>();
                 services.AddSingleton<NotificationService>();
                 services.AddSingleton<IAiMessageGenerator, AnthropicMessageGenerator>();
+                services.AddSingleton<IAiChatGenerator, AnthropicChatGenerator>();
                 services.AddSingleton<ReminderScheduler>();
                 services.AddHostedService(sp => sp.GetRequiredService<ReminderScheduler>());
                 services.AddSingleton<CalendarSyncService>();

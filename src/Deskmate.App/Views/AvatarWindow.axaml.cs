@@ -7,6 +7,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Deskmate.App.ViewModels;
 using Deskmate.Core;
+using Deskmate.Infrastructure.AiMessages;
 using Deskmate.Infrastructure.Calendar;
 using Deskmate.Infrastructure.Data;
 using Deskmate.Infrastructure.Display;
@@ -28,6 +29,7 @@ public partial class AvatarWindow : Window
     public required ReminderService ReminderService { get; init; }
     public required CalendarSyncService CalendarSyncService { get; init; }
     public required IFullScreenDetector FullScreenDetector { get; init; }
+    public required IAiChatGenerator ChatGenerator { get; init; }
 
     private bool _pointerDown;
     private bool _movedBeyondThreshold;
@@ -41,6 +43,7 @@ public partial class AvatarWindow : Window
     private SpeechBubbleWindow? _breakBubble;
     private SpeechBubbleWindow? _greetingBubble;
     private SpeechBubbleWindow? _reminderBubble;
+    private ChatWindow? _chatWindow;
 
     public AvatarWindow()
     {
@@ -88,6 +91,7 @@ public partial class AvatarWindow : Window
         _breakBubble?.Close();
         _greetingBubble?.Close();
         _reminderBubble?.Close();
+        _chatWindow?.Close();
     }
 
     private void CheckFullScreen()
@@ -387,6 +391,10 @@ public partial class AvatarWindow : Window
                 OnSettingsClicked(this, new RoutedEventArgs());
                 e.Handled = true;
                 break;
+            case Key.C when e.KeyModifiers == KeyModifiers.None:
+                OnChatClicked(this, new RoutedEventArgs());
+                e.Handled = true;
+                break;
         }
     }
 
@@ -436,6 +444,23 @@ public partial class AvatarWindow : Window
         };
         settingsWindow.SettingsSaved += OnSettingsSaved;
         await settingsWindow.ShowDialog(this);
+    }
+
+    private void OnChatClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_chatWindow is not null)
+        {
+            _chatWindow.Activate();
+            return;
+        }
+
+        _chatWindow = new ChatWindow
+        {
+            SettingsService = SettingsService,
+            ChatGenerator = ChatGenerator,
+        };
+        _chatWindow.Closed += (_, _) => _chatWindow = null;
+        _chatWindow.Show();
     }
 
     private async void OnSettingsSaved()

@@ -14,7 +14,7 @@
         ShowInTaskbar="False"
         WindowStartupLocation="Manual"
         KeyDown="OnKeyDown"
-        AutomationProperties.Name="Deskmate avatar. Press Enter for the menu or S for settings.">
+        AutomationProperties.Name="Deskmate avatar. Press Enter for the menu, S for settings, or C to chat.">
 
     <Grid Name="RootSurface"
           Background="Transparent"
@@ -26,6 +26,7 @@
         <Grid.ContextMenu>
             <ContextMenu Name="QuickMenu">
                 <MenuItem Header="Settings…" Click="OnSettingsClicked" />
+                <MenuItem Header="Chat…" Click="OnChatClicked" />
                 <MenuItem Header="About Deskmate" IsEnabled="False" />
                 <Separator />
                 <MenuItem Header="Quit" Click="OnQuitClicked" />
