@@ -88,7 +88,10 @@ public sealed class AnthropicMessageGenerator(ILogger<AnthropicMessageGenerator>
         AiMessageKind.Greeting when request.IsFullGreeting =>
             $"Greet {request.UserName} for the first time today. It's {request.TimeOfDay}" +
             (request.IsWeekend ? " on a weekend." : ".") +
-            (string.IsNullOrWhiteSpace(request.CurrentFocus) ? "" : $" They're currently focused on: {request.CurrentFocus}."),
+            (string.IsNullOrWhiteSpace(request.CurrentFocus) ? "" : $" They're currently focused on: {request.CurrentFocus}.") +
+            (request.DueTodayCount > 0
+                ? $" Mention briefly that they have {request.DueTodayCount} reminder{(request.DueTodayCount == 1 ? "" : "s")} due today."
+                : ""),
         AiMessageKind.Greeting =>
             $"{request.UserName} is back after being away for a bit today. Say a brief, light 'welcome back'.",
         AiMessageKind.BreakSuggestion =>

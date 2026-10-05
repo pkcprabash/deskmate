@@ -8,9 +8,10 @@ namespace Deskmate.Core.Tests;
 public class AnthropicMessageGeneratorTests
 {
     private static AiMessageRequest Request(
-        AiMessageKind kind, string currentFocus = "", bool isFullGreeting = false, int minutes = 0, bool isLongBreak = false) => new(
+        AiMessageKind kind, string currentFocus = "", bool isFullGreeting = false, int minutes = 0, bool isLongBreak = false,
+        int dueTodayCount = 0) => new(
         kind, Fallback: "fallback text", AvatarName: "Pixel", UserName: "Alex", Tone: MessageTone.Cheerful,
-        CurrentFocus: currentFocus, TimeOfDay: "morning", IsWeekend: false, isFullGreeting, minutes, isLongBreak);
+        CurrentFocus: currentFocus, TimeOfDay: "morning", IsWeekend: false, isFullGreeting, minutes, isLongBreak, dueTodayCount);
 
     [Fact]
     public void SystemPrompt_NamesTheAvatarAndUser()
@@ -56,6 +57,30 @@ public class AnthropicMessageGeneratorTests
         var prompt = AnthropicMessageGenerator.BuildUserPrompt(Request(AiMessageKind.Greeting, currentFocus: "", isFullGreeting: true));
 
         Assert.DoesNotContain("focused on", prompt);
+    }
+
+    [Fact]
+    public void UserPrompt_FullGreeting_MentionsDueTodayCountWhenSet()
+    {
+        var prompt = AnthropicMessageGenerator.BuildUserPrompt(Request(AiMessageKind.Greeting, isFullGreeting: true, dueTodayCount: 3));
+
+        Assert.Contains("3 reminders due today", prompt);
+    }
+
+    [Fact]
+    public void UserPrompt_FullGreeting_SingularReminderWording()
+    {
+        var prompt = AnthropicMessageGenerator.BuildUserPrompt(Request(AiMessageKind.Greeting, isFullGreeting: true, dueTodayCount: 1));
+
+        Assert.Contains("1 reminder due today", prompt);
+    }
+
+    [Fact]
+    public void UserPrompt_FullGreeting_OmitsDueTodayMentionWhenZero()
+    {
+        var prompt = AnthropicMessageGenerator.BuildUserPrompt(Request(AiMessageKind.Greeting, isFullGreeting: true, dueTodayCount: 0));
+
+        Assert.DoesNotContain("due today", prompt);
     }
 
     [Fact]

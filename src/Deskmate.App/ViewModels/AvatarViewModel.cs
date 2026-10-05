@@ -249,7 +249,8 @@ public class AvatarViewModel(
     /// moment; returns the fallback unchanged if AI messages are off, no key is set, or the call
     /// fails (the generator's contract is to return null rather than throw in that case).
     /// </summary>
-    private async Task<string> ResolveMessageAsync(AiMessageKind kind, string fallback, bool isFullGreeting = false, int minutes = 0, bool isLongBreak = false)
+    private async Task<string> ResolveMessageAsync(
+        AiMessageKind kind, string fallback, bool isFullGreeting = false, int minutes = 0, bool isLongBreak = false, int dueTodayCount = 0)
     {
         if (!_aiEnabled || string.IsNullOrWhiteSpace(_aiApiKey))
         {
@@ -258,7 +259,7 @@ public class AvatarViewModel(
 
         var (timeOfDay, isWeekend) = GreetingService.DescribeNow(DateTimeOffset.Now);
         var request = new AiMessageRequest(
-            kind, fallback, _avatarName, _userName, _tone, _currentFocus, timeOfDay, isWeekend, isFullGreeting, minutes, isLongBreak);
+            kind, fallback, _avatarName, _userName, _tone, _currentFocus, timeOfDay, isWeekend, isFullGreeting, minutes, isLongBreak, dueTodayCount);
 
         var generated = await aiMessageGenerator.GenerateAsync(request, _aiApiKey, _aiModel);
         return generated ?? fallback;
@@ -362,13 +363,17 @@ public class AvatarViewModel(
             _ = settingsService.UpdateAsync(_settingsId, s => s.LastGreetingDate = today);
         }
 
-        var fallback = _greetingService.BuildMessage(kind, _userName, now, _tone);
-        _ = AnnounceGreetingAsync(fallback, isFullGreeting: kind == GreetingKind.Full);
+        _ = AnnounceGreetingAsync(kind, today, now);
     }
 
-    private async Task AnnounceGreetingAsync(string fallback, bool isFullGreeting)
+    private async Task AnnounceGreetingAsync(GreetingKind kind, DateOnly today, DateTimeOffset now)
     {
-        var message = await ResolveMessageAsync(AiMessageKind.Greeting, fallback, isFullGreeting);
+        var isFullGreeting = kind == GreetingKind.Full;
+        // Only the full "Good morning" greeting mentions today's reminder count; the lighter
+        // "Welcome back" doesn't, so there's no point querying the database for it.
+        var dueTodayCount = isFullGreeting ? await reminderService.GetDueTodayCountAsync(today) : 0;
+        var fallback = _greetingService.BuildMessage(kind, _userName, now, _tone, dueTodayCount);
+        var message = await ResolveMessageAsync(AiMessageKind.Greeting, fallback, isFullGreeting, dueTodayCount: dueTodayCount);
         GreetingReady?.Invoke(message);
     }
 

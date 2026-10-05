@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed: the morning greeting now mentions how many reminders are due today (e.g. "Good
+  morning, Alex! You've got 3 reminders today!"), as the original v0.1 plan called for but the
+  initial greeting implementation never actually did.
+
 - Chat now remembers the last 20 messages of the open conversation, so follow-up questions and
   references to earlier turns actually land, instead of each reply being answered in isolation.
 

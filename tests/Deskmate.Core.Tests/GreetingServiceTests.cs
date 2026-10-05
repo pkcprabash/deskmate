@@ -127,4 +127,41 @@ public class GreetingServiceTests
 
         Assert.Equal("Good morning, Alex.", message);
     }
+
+    [Fact]
+    public void BuildMessage_Full_NoReminders_OmitsCountMention()
+    {
+        var sut = new GreetingService();
+        var monday = new DateTimeOffset(2026, 9, 21, 9, 0, 0, TimeSpan.Zero);
+
+        var message = sut.BuildMessage(GreetingKind.Full, "Alex", monday, MessageTone.Cheerful, dueTodayCount: 0);
+
+        Assert.Equal("Good morning, Alex! Are you ready to ace your day?", message);
+    }
+
+    [Theory]
+    [InlineData(MessageTone.Cheerful, 1, "You've got 1 reminder today!")]
+    [InlineData(MessageTone.Cheerful, 3, "You've got 3 reminders today!")]
+    [InlineData(MessageTone.Calm, 1, "You have 1 reminder today.")]
+    [InlineData(MessageTone.Calm, 2, "You have 2 reminders today.")]
+    [InlineData(MessageTone.Minimal, 2, "2 today.")]
+    public void BuildMessage_Full_MentionsHowManyRemindersAreDueToday(MessageTone tone, int count, string expectedSuffix)
+    {
+        var sut = new GreetingService();
+        var monday = new DateTimeOffset(2026, 9, 21, 9, 0, 0, TimeSpan.Zero);
+
+        var message = sut.BuildMessage(GreetingKind.Full, "Alex", monday, tone, dueTodayCount: count);
+
+        Assert.EndsWith(expectedSuffix, message);
+    }
+
+    [Fact]
+    public void BuildMessage_WelcomeBack_NeverMentionsDueTodayCount()
+    {
+        var sut = new GreetingService();
+
+        var message = sut.BuildMessage(GreetingKind.WelcomeBack, "Alex", DateTimeOffset.Now, MessageTone.Cheerful, dueTodayCount: 5);
+
+        Assert.Equal("Welcome back!", message);
+    }
 }

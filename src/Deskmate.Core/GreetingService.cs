@@ -37,7 +37,11 @@ public class GreetingService
         return GreetingKind.WelcomeBack;
     }
 
-    public string BuildMessage(GreetingKind kind, string userName, DateTimeOffset now, MessageTone tone)
+    /// <param name="dueTodayCount">
+    /// How many reminders are due today, mentioned at the end of a <see cref="GreetingKind.Full"/>
+    /// greeting (never on a lighter <see cref="GreetingKind.WelcomeBack"/>). Zero omits the mention.
+    /// </param>
+    public string BuildMessage(GreetingKind kind, string userName, DateTimeOffset now, MessageTone tone, int dueTodayCount = 0)
     {
         var name = string.IsNullOrWhiteSpace(userName) ? "there" : userName;
 
@@ -51,24 +55,48 @@ public class GreetingService
             };
         }
 
+        string greeting;
         if (tone == MessageTone.Minimal)
         {
-            return $"{TimeOfDayGreeting(now)}, {name}.";
+            greeting = $"{TimeOfDayGreeting(now)}, {name}.";
         }
-
-        var isWeekend = now.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
-        if (isWeekend)
+        else
         {
-            var weekendGreeting = now.DayOfWeek == DayOfWeek.Saturday ? "Happy Saturday" : "Happy Sunday";
-            return tone == MessageTone.Calm
-                ? $"{weekendGreeting}, {name}. Hope you get some rest."
-                : $"{weekendGreeting}, {name}! Enjoy your day off.";
+            var isWeekend = now.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+            if (isWeekend)
+            {
+                var weekendGreeting = now.DayOfWeek == DayOfWeek.Saturday ? "Happy Saturday" : "Happy Sunday";
+                greeting = tone == MessageTone.Calm
+                    ? $"{weekendGreeting}, {name}. Hope you get some rest."
+                    : $"{weekendGreeting}, {name}! Enjoy your day off.";
+            }
+            else
+            {
+                var timeOfDayGreeting = TimeOfDayGreeting(now);
+                greeting = tone == MessageTone.Calm
+                    ? $"{timeOfDayGreeting}, {name}. Hope you have a peaceful day."
+                    : $"{timeOfDayGreeting}, {name}! Are you ready to ace your day?";
+            }
         }
 
-        var timeOfDayGreeting = TimeOfDayGreeting(now);
-        return tone == MessageTone.Calm
-            ? $"{timeOfDayGreeting}, {name}. Hope you have a peaceful day."
-            : $"{timeOfDayGreeting}, {name}! Are you ready to ace your day?";
+        return greeting + BuildDueTodaySuffix(dueTodayCount, tone);
+    }
+
+    private static string BuildDueTodaySuffix(int dueTodayCount, MessageTone tone)
+    {
+        if (dueTodayCount <= 0)
+        {
+            return "";
+        }
+
+        var noun = dueTodayCount == 1 ? "reminder" : "reminders";
+
+        return tone switch
+        {
+            MessageTone.Minimal => $" {dueTodayCount} today.",
+            MessageTone.Calm => $" You have {dueTodayCount} {noun} today.",
+            _ => $" You've got {dueTodayCount} {noun} today!",
+        };
     }
 
     private static string TimeOfDayGreeting(DateTimeOffset now) => now.Hour switch
