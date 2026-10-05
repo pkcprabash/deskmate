@@ -125,7 +125,7 @@
             <TabItem Header="_Calendar">
                 <StackPanel Spacing="10" Margin="8">
                     <TextBlock TextWrapping="Wrap"
-                               Text="Subscribe to a calendar's private ICS address (Google Calendar: Settings > (your calendar) > 'Secret address in iCal format'; Outlook.com: Settings > Calendar > Shared calendars > ICS link; Apple Calendar: right-click a calendar > Share Calendar > Public Calendar). Deskmate re-syncs it every few hours; events don't repeat here yet — recurring events are skipped." />
+                               Text="Subscribe to a calendar's private ICS address (Google Calendar: Settings > (your calendar) > 'Secret address in iCal format'; Outlook.com: Settings > Calendar > Shared calendars > ICS link; Apple Calendar: right-click a calendar > Share Calendar > Public Calendar). Deskmate re-syncs it every few hours and expands recurring events (daily/weekly/monthly/yearly, specific weekdays, ordinal weekdays) into recurring reminders." />
                     <StackPanel Spacing="4">
                         <TextBlock Text="Calendar ICS URL" />
                         <TextBox Name="CalendarIcsUrlTextBox" PlaceholderText="https://calendar.google.com/calendar/ical/…/basic.ics" />
