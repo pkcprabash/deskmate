@@ -43,9 +43,9 @@ Open the quick menu (double-click the avatar, or press Enter/C) and choose "Chat
 it directly. It uses the same Anthropic API key and model as AI messages above, plus your name,
 the avatar's name, your tone preference, and your current focus from Settings > About me. Each
 reply is sent the last 20 messages of the conversation for context, so it remembers what you
-said earlier in the same window. The conversation lives only in that window, for as long as it
-stays open; closing it clears it. If AI messages aren't turned on or configured, the chat
-window says so instead of accepting input.
+said earlier in the same window. The conversation lives only in that window: "Clear" resets it
+without closing the window, and Escape or closing the window discards it. If AI messages
+aren't turned on or configured, the chat window says so instead of accepting input.
 
 ## Platforms
 

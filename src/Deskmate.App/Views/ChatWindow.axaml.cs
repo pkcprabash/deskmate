@@ -18,7 +18,8 @@ namespace Deskmate.App.Views;
 /// A small chat window opened from the avatar's quick menu. Reuses the same Anthropic API key
 /// and "About me" context as AI messages (Settings > AI messages); when AI messages aren't
 /// turned on or configured, the input is replaced with a note pointing there instead. The
-/// conversation lives only in this window, for as long as it stays open.
+/// conversation lives only in this window, for as long as it stays open: Escape or closing the
+/// window discards it, and "Clear" resets it without closing the window.
 /// </summary>
 public partial class ChatWindow : Window
 {
@@ -81,6 +82,24 @@ public partial class ChatWindow : Window
     }
 
     private void OnSendClicked(object? sender, RoutedEventArgs e) => _ = SendAsync();
+
+    private void OnClearClicked(object? sender, RoutedEventArgs e)
+    {
+        _history.Clear();
+        MessagesPanel.Children.Clear();
+        InputTextBox.Focus();
+    }
+
+    private void OnWindowKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        Close();
+    }
 
     private async Task SendAsync()
     {

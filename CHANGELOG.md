@@ -6,6 +6,9 @@
   morning, Alex! You've got 3 reminders today!"), as the original v0.1 plan called for but the
   initial greeting implementation never actually did.
 
+- Chat window gained a "Clear" button (resets the conversation without closing the window) and
+  closes on Escape.
+
 - Chat now remembers the last 20 messages of the open conversation, so follow-up questions and
   references to earlier turns actually land, instead of each reply being answered in isolation.
 
