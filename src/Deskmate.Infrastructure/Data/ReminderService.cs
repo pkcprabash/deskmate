@@ -101,6 +101,16 @@ public class ReminderService(IDbContextFactory<DeskmateDbContext> dbContextFacto
         return await db.ReminderOccurrences.CountAsync(o => o.Date == today && !o.Completed, cancellationToken);
     }
 
+    /// <summary>Titles of not-yet-completed occurrences falling on <paramref name="today"/>, so chat can answer "what's today?".</summary>
+    public async Task<List<string>> GetDueTodayTitlesAsync(DateOnly today, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await db.ReminderOccurrences
+            .Where(o => o.Date == today && !o.Completed)
+            .Join(db.Reminders, o => o.ReminderId, r => r.Id, (o, r) => r.Title)
+            .ToListAsync(cancellationToken);
+    }
+
     /// <summary>All not-yet-completed occurrences, paired with their reminder, for the scheduler to evaluate.</summary>
     public async Task<List<(Reminder Reminder, ReminderOccurrence Occurrence)>> GetPendingOccurrencesAsync(CancellationToken cancellationToken = default)
     {

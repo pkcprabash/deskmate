@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -83,11 +84,26 @@ public sealed class AnthropicChatGenerator(ILogger<AnthropicChatGenerator> logge
         }
     }
 
+    private const int MaxDueTodayRemindersInPrompt = 15;
+
     public static string BuildSystemPrompt(AiChatRequest request) =>
         $"""
         You are {request.AvatarName}, a friendly animated desktop companion chatting with
         {request.UserName} while they work. Reply conversationally, in a
         {request.Tone.ToString().ToLowerInvariant()} tone, in a sentence or two — no markdown,
         no stage directions, just what you'd say out loud.
-        """ + (string.IsNullOrWhiteSpace(request.CurrentFocus) ? "" : $" They're currently focused on: {request.CurrentFocus}.");
+        """
+        + (string.IsNullOrWhiteSpace(request.CurrentFocus) ? "" : $" They're currently focused on: {request.CurrentFocus}.")
+        + BuildDueTodayRemindersClause(request.DueTodayReminders);
+
+    private static string BuildDueTodayRemindersClause(IReadOnlyList<string> dueTodayReminders)
+    {
+        if (dueTodayReminders.Count == 0)
+        {
+            return "";
+        }
+
+        var titles = string.Join(", ", dueTodayReminders.Take(MaxDueTodayRemindersInPrompt));
+        return $" Today's reminders: {titles}. Only bring these up if asked what's on today, or something similar.";
+    }
 }

@@ -41,9 +41,10 @@ to its built-in phrasing — you'"'"'ll never see a blank message.
 
 Open the quick menu (double-click the avatar, or press Enter/C) and choose "Chat…" to talk to
 it directly. It uses the same Anthropic API key and model as AI messages above, plus your name,
-the avatar's name, your tone preference, and your current focus from Settings > About me. Each
-reply is sent the last 20 messages of the conversation for context, so it remembers what you
-said earlier in the same window. The conversation lives only in that window: "Clear" resets it
+the avatar's name, your tone preference, your current focus from Settings > About me, and the
+titles of today's not-yet-completed reminders — so it can actually answer "what's on today?"
+instead of guessing. Each reply is sent the last 20 messages of the conversation for context,
+so it remembers what you said earlier in the same window. The conversation lives only in that window: "Clear" resets it
 without closing the window, and Escape or closing the window discards it. If AI messages
 aren't turned on or configured, the chat window says so instead of accepting input.
 

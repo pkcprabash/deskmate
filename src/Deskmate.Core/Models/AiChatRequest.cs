@@ -7,10 +7,12 @@ namespace Deskmate.Core.Models;
 /// avatar. No I/O here, so prompt-building stays easy to test.
 /// </summary>
 /// <param name="History">Earlier turns in this conversation, oldest first, not including <paramref name="UserMessage"/>.</param>
+/// <param name="DueTodayReminders">Titles of today's not-yet-completed reminders, so chat can answer "what's today?" factually.</param>
 public sealed record AiChatRequest(
     string AvatarName,
     string UserName,
     MessageTone Tone,
     string CurrentFocus,
     string UserMessage,
-    IReadOnlyList<ChatMessage> History);
+    IReadOnlyList<ChatMessage> History,
+    IReadOnlyList<string> DueTodayReminders);

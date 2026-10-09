@@ -457,6 +457,7 @@ public partial class AvatarWindow : Window
         _chatWindow = new ChatWindow
         {
             SettingsService = SettingsService,
+            ReminderService = ReminderService,
             ChatGenerator = ChatGenerator,
         };
         _chatWindow.Closed += (_, _) => _chatWindow = null;

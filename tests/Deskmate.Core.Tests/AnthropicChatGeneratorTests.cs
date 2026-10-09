@@ -9,9 +9,10 @@ namespace Deskmate.Core.Tests;
 public class AnthropicChatGeneratorTests
 {
     private static AiChatRequest Request(
-        string currentFocus = "", string userMessage = "How's it going?", IReadOnlyList<ChatMessage>? history = null) => new(
+        string currentFocus = "", string userMessage = "How's it going?", IReadOnlyList<ChatMessage>? history = null,
+        IReadOnlyList<string>? dueTodayReminders = null) => new(
         AvatarName: "Pixel", UserName: "Alex", Tone: MessageTone.Cheerful, CurrentFocus: currentFocus,
-        UserMessage: userMessage, History: history ?? []);
+        UserMessage: userMessage, History: history ?? [], DueTodayReminders: dueTodayReminders ?? []);
 
     [Fact]
     public void SystemPrompt_NamesTheAvatarAndUser()
@@ -49,6 +50,23 @@ public class AnthropicChatGeneratorTests
         var prompt = AnthropicChatGenerator.BuildSystemPrompt(Request(currentFocus: ""));
 
         Assert.DoesNotContain("focused on", prompt);
+    }
+
+    [Fact]
+    public void SystemPrompt_MentionsTodaysReminderTitlesWhenSet()
+    {
+        var prompt = AnthropicChatGenerator.BuildSystemPrompt(Request(dueTodayReminders: ["Pay rent", "Call dentist"]));
+
+        Assert.Contains("Pay rent", prompt);
+        Assert.Contains("Call dentist", prompt);
+    }
+
+    [Fact]
+    public void SystemPrompt_OmitsRemindersClauseWhenNoneDueToday()
+    {
+        var prompt = AnthropicChatGenerator.BuildSystemPrompt(Request(dueTodayReminders: []));
+
+        Assert.DoesNotContain("Today's reminders", prompt);
     }
 
     [Fact]

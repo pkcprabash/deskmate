@@ -30,6 +30,7 @@ public partial class ChatWindow : Window
     private const int MaxHistoryMessages = 20;
 
     public required SettingsService SettingsService { get; init; }
+    public required ReminderService ReminderService { get; init; }
     public required IAiChatGenerator ChatGenerator { get; init; }
 
     private readonly List<ChatMessage> _history = [];
@@ -39,6 +40,7 @@ public partial class ChatWindow : Window
     private string _currentFocus = "";
     private string? _apiKey;
     private string _model = "";
+    private List<string> _dueTodayReminders = [];
     private bool _awaitingReply;
 
     public ChatWindow()
@@ -56,6 +58,7 @@ public partial class ChatWindow : Window
         _currentFocus = settings.CurrentFocus;
         _apiKey = settings.AiApiKey;
         _model = settings.AiModel;
+        _dueTodayReminders = await ReminderService.GetDueTodayTitlesAsync(DateOnly.FromDateTime(DateTime.Now));
 
         Title = $"Chat with {_avatarName}";
 
@@ -119,7 +122,7 @@ public partial class ChatWindow : Window
         SendButton.IsEnabled = false;
         var thinkingBubble = AppendMessage(ChatRole.Avatar, "…");
 
-        var request = new AiChatRequest(_avatarName, _userName, _tone, _currentFocus, text, historyForRequest);
+        var request = new AiChatRequest(_avatarName, _userName, _tone, _currentFocus, text, historyForRequest, _dueTodayReminders);
         var reply = await ChatGenerator.ReplyAsync(request, _apiKey, _model);
         var replyText = reply ?? "Sorry, I couldn't think of a reply just now.";
 
